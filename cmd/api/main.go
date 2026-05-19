@@ -3,9 +3,12 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/wallbit-workflows/wallbit-registry/internal/config"
 )
 
 func main() {
+	cfg := config.Load()
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -14,7 +17,7 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + cfg.Port,
 		Handler: mux,
 	}
 
