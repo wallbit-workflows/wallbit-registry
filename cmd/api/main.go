@@ -5,15 +5,19 @@ import (
 	"net/http"
 
 	"github.com/wallbit-workflows/wallbit-registry/internal/config"
+	"github.com/wallbit-workflows/wallbit-registry/internal/response"
 )
+
+type healthResponse struct {
+	Status string `json:"status"`
+}
 
 func main() {
 	cfg := config.Load()
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		response.WriteJSON(w, http.StatusOK, healthResponse{Status: "OK"})
 	})
 
 	srv := &http.Server{
