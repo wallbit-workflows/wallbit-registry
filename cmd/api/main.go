@@ -5,27 +5,22 @@ import (
 	"net/http"
 
 	"github.com/wallbit-workflows/wallbit-registry/internal/config"
-	"github.com/wallbit-workflows/wallbit-registry/internal/response"
+	"github.com/wallbit-workflows/wallbit-registry/internal/health"
+	"github.com/wallbit-workflows/wallbit-registry/internal/server"
 )
-
-type healthResponse struct {
-	Status string `json:"status"`
-}
 
 func main() {
 	cfg := config.Load()
-	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		response.WriteJSON(w, http.StatusOK, healthResponse{Status: "OK"})
-	})
+	healthSvc := health.NewHandler()
+	handler := server.New(healthSvc)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: mux,
+		Handler: handler,
 	}
 
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Error running api")
+		log.Fatalf("Error running api: %v", err)
 	}
 }
