@@ -11,6 +11,14 @@ const (
 	contentTypeYAML = "application/x-yaml; charset=utf-8"
 )
 
+type ErrorBody struct {
+	Error string `json:"error"`
+}
+
+func WriteError(w http.ResponseWriter, status int, message string) {
+	WriteJSON(w, status, ErrorBody{Error: message})
+}
+
 func Write(w http.ResponseWriter, status int, contentType string, body []byte) {
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
