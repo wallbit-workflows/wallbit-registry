@@ -15,6 +15,23 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	slug := r.PathValue("slug")
+
+	meta, err := h.svc.Get(r.Context(), username, slug)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			response.WriteError(w, http.StatusNotFound, "workflow not found")
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, "failed to get workflow")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, meta)
+}
+
 func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 	slug := r.PathValue("slug")
@@ -33,5 +50,6 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /workflows/{username}/{slug}", h.Get)
 	mux.HandleFunc("GET /workflows/{username}/{slug}/download", h.Download)
 }
