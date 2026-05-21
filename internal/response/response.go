@@ -6,16 +6,29 @@ import (
 	"net/http"
 )
 
+const (
+	contentTypeJSON = "application/json; charset=utf-8"
+	contentTypeYAML = "application/x-yaml; charset=utf-8"
+)
+
+func Write(w http.ResponseWriter, status int, contentType string, body []byte) {
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(status)
+	if _, err := w.Write(body); err != nil {
+		log.Printf("response write: %v", err)
+	}
+}
+
+func WriteYAML(w http.ResponseWriter, status int, body []byte) {
+	Write(w, status, contentTypeYAML, body)
+}
+
 func WriteJSON(w http.ResponseWriter, status int, data any) {
 	b, err := json.Marshal(data)
 	if err != nil {
 		log.Printf("json marshal: %v", err)
-		http.Error(w, `{"error": "internal server error"}`, http.StatusInternalServerError)
+		Write(w, http.StatusInternalServerError, contentTypeJSON, []byte(`{"error":"internal server error"}`))
 		return
 	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	if _, err := w.Write(b); err != nil {
-		log.Printf("json write: %v", err)
-	}
+	Write(w, status, contentTypeJSON, b)
 }
