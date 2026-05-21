@@ -7,6 +7,8 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getWorkflowByAuthorAndSlug = `-- name: GetWorkflowByAuthorAndSlug :one
@@ -33,6 +35,52 @@ func (q *Queries) GetWorkflowByAuthorAndSlug(ctx context.Context, arg GetWorkflo
 		&i.Description,
 		&i.LatestVersionID,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getWorkflowMetadataByAuthorAndSlug = `-- name: GetWorkflowMetadataByAuthorAndSlug :one
+SELECT
+    w.slug,
+    w.display_name,
+    w.description,
+    w.created_at AS workflow_created_at,
+    wv.version,
+    wv.content_sha256,
+    wv.created_at AS published_at
+FROM workflows w
+INNER JOIN users u ON u.id = w.author_id
+INNER JOIN workflow_versions wv ON wv.id = w.latest_version_id
+WHERE u.username = $1
+  AND w.slug = $2
+`
+
+type GetWorkflowMetadataByAuthorAndSlugParams struct {
+	Username *string `json:"username"`
+	Slug     string  `json:"slug"`
+}
+
+type GetWorkflowMetadataByAuthorAndSlugRow struct {
+	Slug              string             `json:"slug"`
+	DisplayName       string             `json:"display_name"`
+	Description       string             `json:"description"`
+	WorkflowCreatedAt pgtype.Timestamptz `json:"workflow_created_at"`
+	Version           string             `json:"version"`
+	ContentSha256     string             `json:"content_sha256"`
+	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) GetWorkflowMetadataByAuthorAndSlug(ctx context.Context, arg GetWorkflowMetadataByAuthorAndSlugParams) (GetWorkflowMetadataByAuthorAndSlugRow, error) {
+	row := q.db.QueryRow(ctx, getWorkflowMetadataByAuthorAndSlug, arg.Username, arg.Slug)
+	var i GetWorkflowMetadataByAuthorAndSlugRow
+	err := row.Scan(
+		&i.Slug,
+		&i.DisplayName,
+		&i.Description,
+		&i.WorkflowCreatedAt,
+		&i.Version,
+		&i.ContentSha256,
+		&i.PublishedAt,
 	)
 	return i, err
 }
