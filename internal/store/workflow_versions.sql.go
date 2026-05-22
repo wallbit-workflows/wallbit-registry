@@ -7,16 +7,61 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createWorkflowVersion = `-- name: CreateWorkflowVersion :one
+INSERT INTO workflow_versions (workflow_id, version, content, content_sha256)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    id,
+    workflow_id,
+    version,
+    content,
+    content_sha256,
+    created_at
+`
+
+type CreateWorkflowVersionParams struct {
+	WorkflowID    pgtype.UUID `json:"workflow_id"`
+	Version       string      `json:"version"`
+	Content       string      `json:"content"`
+	ContentSha256 string      `json:"content_sha256"`
+}
+
+func (q *Queries) CreateWorkflowVersion(ctx context.Context, arg CreateWorkflowVersionParams) (WorkflowVersion, error) {
+	row := q.db.QueryRow(ctx, createWorkflowVersion,
+		arg.WorkflowID,
+		arg.Version,
+		arg.Content,
+		arg.ContentSha256,
+	)
+	var i WorkflowVersion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkflowID,
+		&i.Version,
+		&i.Content,
+		&i.ContentSha256,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getLatestWorkflowVersionBySlug = `-- name: GetLatestWorkflowVersionBySlug :one
-SELECT wv.id, wv.workflow_id, wv.version, wv.content, wv.content_sha256, wv.created_at
-FROM workflow_versions wv
-INNER JOIN workflows w ON w.id = wv.workflow_id
+SELECT
+    wv.id,
+    wv.workflow_id,
+    wv.version,
+    wv.content,
+    wv.content_sha256,
+    wv.created_at
+FROM workflows w
 INNER JOIN users u ON u.id = w.author_id
+INNER JOIN workflow_versions wv ON wv.id = w.latest_version_id
 WHERE u.username = $1
   AND w.slug = $2
-  AND wv.id = w.latest_version_id
 `
 
 type GetLatestWorkflowVersionBySlugParams struct {
@@ -36,4 +81,25 @@ func (q *Queries) GetLatestWorkflowVersionBySlug(ctx context.Context, arg GetLat
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const workflowVersionExists = `-- name: WorkflowVersionExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM workflow_versions
+    WHERE workflow_id = $1
+      AND version = $2
+) AS version_exists
+`
+
+type WorkflowVersionExistsParams struct {
+	WorkflowID pgtype.UUID `json:"workflow_id"`
+	Version    string      `json:"version"`
+}
+
+func (q *Queries) WorkflowVersionExists(ctx context.Context, arg WorkflowVersionExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, workflowVersionExists, arg.WorkflowID, arg.Version)
+	var version_exists bool
+	err := row.Scan(&version_exists)
+	return version_exists, err
 }

@@ -11,12 +11,59 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createWorkflow = `-- name: CreateWorkflow :one
+INSERT INTO workflows (author_id, slug, display_name, description)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    id,
+    author_id,
+    slug,
+    display_name,
+    description,
+    latest_version_id,
+    created_at
+`
+
+type CreateWorkflowParams struct {
+	AuthorID    pgtype.UUID `json:"author_id"`
+	Slug        string      `json:"slug"`
+	DisplayName string      `json:"display_name"`
+	Description string      `json:"description"`
+}
+
+func (q *Queries) CreateWorkflow(ctx context.Context, arg CreateWorkflowParams) (Workflow, error) {
+	row := q.db.QueryRow(ctx, createWorkflow,
+		arg.AuthorID,
+		arg.Slug,
+		arg.DisplayName,
+		arg.Description,
+	)
+	var i Workflow
+	err := row.Scan(
+		&i.ID,
+		&i.AuthorID,
+		&i.Slug,
+		&i.DisplayName,
+		&i.Description,
+		&i.LatestVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getWorkflowByAuthorAndSlug = `-- name: GetWorkflowByAuthorAndSlug :one
-SELECT w.id, w.author_id, w.slug, w.display_name, w.description, w.latest_version_id, w.created_at
+SELECT
+    w.id,
+    w.author_id,
+    w.slug,
+    w.display_name,
+    w.description,
+    w.latest_version_id,
+    w.created_at
 FROM workflows w
 INNER JOIN users u ON u.id = w.author_id
 WHERE u.username = $1
-AND w.slug = $2
+  AND w.slug = $2
 `
 
 type GetWorkflowByAuthorAndSlugParams struct {
@@ -26,6 +73,40 @@ type GetWorkflowByAuthorAndSlugParams struct {
 
 func (q *Queries) GetWorkflowByAuthorAndSlug(ctx context.Context, arg GetWorkflowByAuthorAndSlugParams) (Workflow, error) {
 	row := q.db.QueryRow(ctx, getWorkflowByAuthorAndSlug, arg.Username, arg.Slug)
+	var i Workflow
+	err := row.Scan(
+		&i.ID,
+		&i.AuthorID,
+		&i.Slug,
+		&i.DisplayName,
+		&i.Description,
+		&i.LatestVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getWorkflowByAuthorIDAndSlug = `-- name: GetWorkflowByAuthorIDAndSlug :one
+SELECT
+    id,
+    author_id,
+    slug,
+    display_name,
+    description,
+    latest_version_id,
+    created_at
+FROM workflows
+WHERE author_id = $1
+  AND slug = $2
+`
+
+type GetWorkflowByAuthorIDAndSlugParams struct {
+	AuthorID pgtype.UUID `json:"author_id"`
+	Slug     string      `json:"slug"`
+}
+
+func (q *Queries) GetWorkflowByAuthorIDAndSlug(ctx context.Context, arg GetWorkflowByAuthorIDAndSlugParams) (Workflow, error) {
+	row := q.db.QueryRow(ctx, getWorkflowByAuthorIDAndSlug, arg.AuthorID, arg.Slug)
 	var i Workflow
 	err := row.Scan(
 		&i.ID,
@@ -96,6 +177,7 @@ SELECT
 FROM workflows w
 INNER JOIN users u ON u.id = w.author_id
 INNER JOIN workflow_versions wv ON wv.id = w.latest_version_id
+WHERE w.latest_version_id IS NOT NULL
 ORDER BY wv.created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -139,4 +221,44 @@ func (q *Queries) ListWorkflows(ctx context.Context, arg ListWorkflowsParams) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateWorkflowLatestVersion = `-- name: UpdateWorkflowLatestVersion :one
+UPDATE workflows w
+SET latest_version_id = $2
+WHERE w.id = $1
+  AND EXISTS (
+      SELECT 1
+      FROM workflow_versions wv
+      WHERE wv.id = $2
+        AND wv.workflow_id = w.id
+  )
+RETURNING
+    w.id,
+    w.author_id,
+    w.slug,
+    w.display_name,
+    w.description,
+    w.latest_version_id,
+    w.created_at
+`
+
+type UpdateWorkflowLatestVersionParams struct {
+	ID              pgtype.UUID `json:"id"`
+	LatestVersionID pgtype.UUID `json:"latest_version_id"`
+}
+
+func (q *Queries) UpdateWorkflowLatestVersion(ctx context.Context, arg UpdateWorkflowLatestVersionParams) (Workflow, error) {
+	row := q.db.QueryRow(ctx, updateWorkflowLatestVersion, arg.ID, arg.LatestVersionID)
+	var i Workflow
+	err := row.Scan(
+		&i.ID,
+		&i.AuthorID,
+		&i.Slug,
+		&i.DisplayName,
+		&i.Description,
+		&i.LatestVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
