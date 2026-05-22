@@ -1,10 +1,12 @@
 package workflows
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
 
+	"github.com/wallbit-workflows/wallbit-registry/internal/auth"
 	"github.com/wallbit-workflows/wallbit-registry/internal/response"
 )
 
@@ -14,11 +16,12 @@ const (
 )
 
 type Handler struct {
-	svc *Service
+	svc            *Service
+	authMiddleware *auth.Middleware
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *Service, authMiddleware *auth.Middleware) *Handler {
+	return &Handler{svc: svc, authMiddleware: authMiddleware}
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +93,42 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
+	authorID, ok := auth.UserID(r.Context())
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MaxWorkflowContentBytes+1024)
+	defer r.Body.Close()
+
+	var req PublishRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json body")
+		return
+	}
+
+	res, err := h.svc.Publish(r.Context(), authorID, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidInput):
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, ErrNoUsername):
+			response.WriteError(w, http.StatusBadRequest, "username not set")
+		case errors.Is(err, ErrConflict):
+			response.WriteError(w, http.StatusConflict, "workflow version already exists")
+		case errors.Is(err, ErrNotFound):
+			response.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		default:
+			response.WriteError(w, http.StatusInternalServerError, "failed to publish workflow")
+		}
+		return
+	}
+
+	response.WriteJSON(w, http.StatusCreated, res)
+}
+
 func queryInt(r *http.Request, key string, fallback int) (int, error) {
 	raw := r.URL.Query().Get(key)
 	if raw == "" {
@@ -106,4 +145,5 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /workflows", h.List)
 	mux.HandleFunc("GET /workflows/{username}/{slug}", h.Get)
 	mux.HandleFunc("GET /workflows/{username}/{slug}/download", h.Download)
+	mux.HandleFunc("POST /workflows", h.authMiddleware.RequireUser(h.Publish))
 }

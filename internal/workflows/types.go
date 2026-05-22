@@ -27,3 +27,17 @@ type ListResponse struct {
 	Limit  int        `json:"limit"`
 	Offset int        `json:"offset"`
 }
+
+type PublishRequest struct {
+	Slug        string `json:"slug"`
+	Version     string `json:"version"`
+	Description string `json:"description,omitempty"`
+	Content     string `json:"content"`
+}
+
+type PublishResponse struct {
+	Username string `json:"username"`
+	Slug     string `json:"slug"`
+	Version  string `json:"version"`
+	Digest   string `json:"digest"`
+}

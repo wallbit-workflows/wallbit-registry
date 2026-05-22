@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/wallbit-workflows/wallbit-registry/internal/auth"
 	"github.com/wallbit-workflows/wallbit-registry/internal/config"
 	"github.com/wallbit-workflows/wallbit-registry/internal/db"
 	"github.com/wallbit-workflows/wallbit-registry/internal/health"
@@ -35,7 +36,8 @@ func run(ctx context.Context) error {
 
 	queries := store.New(pool)
 	healthHandler := health.New(pool)
-	workflowsHandler := workflows.NewHandler(workflows.NewService(queries))
+	authMiddleware := auth.NewMiddleware(queries)
+	workflowsHandler := workflows.NewHandler(workflows.NewService(pool, queries), authMiddleware)
 	handler := server.New(healthHandler, workflowsHandler)
 
 	httpServer := &http.Server{
