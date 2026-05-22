@@ -11,6 +11,46 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createAPIKey = `-- name: CreateAPIKey :one
+INSERT INTO api_keys (user_id, key_hash, key_prefix, name)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    id,
+    user_id,
+    key_hash,
+    key_prefix,
+    name,
+    created_at,
+    revoked_at
+`
+
+type CreateAPIKeyParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	KeyHash   string      `json:"key_hash"`
+	KeyPrefix string      `json:"key_prefix"`
+	Name      string      `json:"name"`
+}
+
+func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error) {
+	row := q.db.QueryRow(ctx, createAPIKey,
+		arg.UserID,
+		arg.KeyHash,
+		arg.KeyPrefix,
+		arg.Name,
+	)
+	var i ApiKey
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.KeyHash,
+		&i.KeyPrefix,
+		&i.Name,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
 const getAPIKeyByHash = `-- name: GetAPIKeyByHash :one
 SELECT
     id,

@@ -11,26 +11,95 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users DEFAULT VALUES
+RETURNING
+    id,
+    username,
+    created_at
+`
+
+type CreateUserRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Username  *string            `json:"username"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser)
+	var i CreateUserRow
+	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT
     id,
     username,
-    clerk_user_id,
-    wallbit_user_id,
     created_at
 FROM users
 WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
+type GetUserByIDRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Username  *string            `json:"username"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.ClerkUserID,
-		&i.WallbitUserID,
-		&i.CreatedAt,
-	)
+	var i GetUserByIDRow
+	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT
+    id,
+    username,
+    created_at
+FROM users
+WHERE username = $1
+`
+
+type GetUserByUsernameRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Username  *string            `json:"username"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username *string) (GetUserByUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i GetUserByUsernameRow
+	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
+	return i, err
+}
+
+const updateUserUsername = `-- name: UpdateUserUsername :one
+UPDATE users
+SET username = $2
+WHERE id = $1
+RETURNING
+    id,
+    username,
+    created_at
+`
+
+type UpdateUserUsernameParams struct {
+	ID       pgtype.UUID `json:"id"`
+	Username *string     `json:"username"`
+}
+
+type UpdateUserUsernameRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Username  *string            `json:"username"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) UpdateUserUsername(ctx context.Context, arg UpdateUserUsernameParams) (UpdateUserUsernameRow, error) {
+	row := q.db.QueryRow(ctx, updateUserUsername, arg.ID, arg.Username)
+	var i UpdateUserUsernameRow
+	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
 	return i, err
 }
