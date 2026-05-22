@@ -84,3 +84,59 @@ func (q *Queries) GetWorkflowMetadataByAuthorAndSlug(ctx context.Context, arg Ge
 	)
 	return i, err
 }
+
+const listWorkflows = `-- name: ListWorkflows :many
+SELECT
+    u.username,
+    w.slug,
+    w.display_name,
+    w.description,
+    wv.version,
+    wv.created_at AS published_at
+FROM workflows w
+INNER JOIN users u ON u.id = w.author_id
+INNER JOIN workflow_versions wv ON wv.id = w.latest_version_id
+ORDER BY wv.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListWorkflowsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListWorkflowsRow struct {
+	Username    *string            `json:"username"`
+	Slug        string             `json:"slug"`
+	DisplayName string             `json:"display_name"`
+	Description string             `json:"description"`
+	Version     string             `json:"version"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) ListWorkflows(ctx context.Context, arg ListWorkflowsParams) ([]ListWorkflowsRow, error) {
+	rows, err := q.db.Query(ctx, listWorkflows, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWorkflowsRow{}
+	for rows.Next() {
+		var i ListWorkflowsRow
+		if err := rows.Scan(
+			&i.Username,
+			&i.Slug,
+			&i.DisplayName,
+			&i.Description,
+			&i.Version,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
