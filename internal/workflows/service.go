@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/wallbit-workflows/wallbit-registry/internal/store"
@@ -16,17 +15,6 @@ type Service struct {
 
 func NewService(queries *store.Queries) *Service {
 	return &Service{queries: queries}
-}
-
-type Metadata struct {
-	Username    string    `json:"username"`
-	Slug        string    `json:"slug"`
-	DisplayName string    `json:"display_name"`
-	Description string    `json:"description,omitempty"`
-	Version     string    `json:"version"`
-	Digest      string    `json:"digest"`
-	CreatedAt   time.Time `json:"created_at"`
-	PublishedAt time.Time `json:"published_at"`
 }
 
 func (s *Service) Get(ctx context.Context, username, slug string) (Metadata, error) {
@@ -67,4 +55,31 @@ func (s *Service) Download(ctx context.Context, username, slug string) (content 
 	}
 
 	return version.Content, nil
+}
+
+func (s *Service) List(ctx context.Context, limit, offset int) ([]ListItem, error) {
+	rows, err := s.queries.ListWorkflows(ctx, store.ListWorkflowsParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list workflows: %w", err)
+	}
+
+	items := make([]ListItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, listItemFromRow(row))
+	}
+	return items, nil
+}
+
+func listItemFromRow(row store.ListWorkflowsRow) ListItem {
+	return ListItem{
+		Username:    *row.Username,
+		Slug:        row.Slug,
+		DisplayName: row.DisplayName,
+		Description: row.Description,
+		Version:     row.Version,
+		PublishedAt: row.PublishedAt.Time,
+	}
 }
