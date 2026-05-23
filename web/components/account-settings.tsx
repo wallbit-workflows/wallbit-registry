@@ -183,7 +183,7 @@ export function AccountSettings() {
         className={`feature-card stack-sm ${needsUsername ? "opacity-50 pointer-events-none" : ""}`}
         aria-hidden={needsUsername}
       >
-        <h2 className="text-subheading text-ink-black">Registry API key</h2>
+        <h2 className="text-subheading text-ink-black">API key for wallbit-cli</h2>
         {needsUsername ? (
           <p className="text-sm text-slate-gray">
             Set your username first, then create an API key for wallbit-cli.
@@ -191,9 +191,10 @@ export function AccountSettings() {
         ) : (
           <>
             <p className="text-sm text-slate-gray">
-              Use this key with{" "}
-              <span className="font-mono text-ink-black">wallbit-cli</span> and
-              when publishing from Workflow Studio. Shown once when created.
+              Create a key for{" "}
+              <span className="font-mono text-ink-black">wallbit-cli</span>{" "}
+              publish and pull commands. The full key is shown once — copy it into
+              your CLI config.
             </p>
 
             {newKey && (
@@ -219,8 +220,9 @@ export function AccountSettings() {
 
             {storedKey && !newKey && (
               <p className="text-sm text-stone-gray">
-                A key is saved in this browser (
-                <span className="font-mono">{storedKey.slice(0, 12)}…</span>).
+                A key prefix is remembered in this browser (
+                <span className="font-mono">{storedKey.slice(0, 12)}…</span>) for
+                your reference.
               </p>
             )}
 
@@ -234,7 +236,7 @@ export function AccountSettings() {
                 {creatingKey && (
                   <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                 )}
-                {creatingKey ? "Creating…" : "Create new API key"}
+                {creatingKey ? "Creating…" : "Create API key"}
               </button>
               {storedKey && (
                 <button
@@ -242,7 +244,7 @@ export function AccountSettings() {
                   className="btn-ghost"
                   onClick={clearStoredKey}
                 >
-                  Clear from browser
+                  Forget saved prefix
                 </button>
               )}
             </div>

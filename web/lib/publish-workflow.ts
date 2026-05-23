@@ -1,5 +1,4 @@
 export type PublishWorkflowPayload = {
-  apiKey: string;
   slug: string;
   version: string;
   description?: string;

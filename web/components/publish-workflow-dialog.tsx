@@ -12,7 +12,6 @@ import {
   publishWorkflow,
 } from "@/lib/publish-workflow";
 import { useRegistryProfile } from "@/components/registry-profile-provider";
-import { getRegistryApiKey, setRegistryApiKey } from "@/lib/registry-auth";
 import { validateRegistryUsername } from "@/lib/registry-username";
 import { semverFromYaml, slugFromYaml } from "@/lib/workflow-filename";
 
@@ -35,15 +34,14 @@ export function PublishWorkflowDialog({
 
   const [yamlContent, setYamlContent] = useState("");
   const [yamlFileName, setYamlFileName] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
   const [username, setUsername] = useState("");
   const [slug, setSlug] = useState("");
   const [version, setVersion] = useState("1.0.0");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { me } = useRegistryProfile();
-  const showUsernameField = !me?.username;
+  const { me, refresh, needsUsername } = useRegistryProfile();
+  const showUsernameField = needsUsername;
 
   const applyYamlToFields = (content: string) => {
     setYamlContent(content);
@@ -57,7 +55,6 @@ export function PublishWorkflowDialog({
 
   useEffect(() => {
     if (!open) return;
-    setApiKey(getRegistryApiKey() ?? "");
     setUsername(me?.username ?? "");
     setDescription("");
     setYamlFileName(null);
@@ -93,12 +90,6 @@ export function PublishWorkflowDialog({
       return;
     }
 
-    const trimmedKey = apiKey.trim();
-    if (!trimmedKey) {
-      toast.error("Registry API key is required");
-      return;
-    }
-
     const trimmedUsername = username.trim();
     if (showUsernameField) {
       const validationError = validateRegistryUsername(trimmedUsername);
@@ -111,15 +102,16 @@ export function PublishWorkflowDialog({
     setSubmitting(true);
     try {
       const result = await publishWorkflow({
-        apiKey: trimmedKey,
         slug: slug.trim(),
         version: version.trim(),
         description: description.trim() || undefined,
         content,
-        username: trimmedUsername || undefined,
+        username: showUsernameField ? trimmedUsername : undefined,
       });
 
-      setRegistryApiKey(trimmedKey);
+      if (showUsernameField) {
+        await refresh();
+      }
       onPublished?.({ username: result.username, slug: result.slug });
       router.refresh();
 
@@ -137,7 +129,7 @@ export function PublishWorkflowDialog({
     } catch (err) {
       if (err instanceof PublishWorkflowError) {
         if (err.status === 401) {
-          toast.error("Invalid or missing API key — create a new one in Account");
+          toast.error("Sign in to publish workflows");
         } else if (err.status === 409) {
           toast.error("Version already exists — bump semver and try again");
         } else if (
@@ -159,7 +151,6 @@ export function PublishWorkflowDialog({
   if (!open || !mounted) return null;
 
   const hasYaml = yamlContent.trim().length > 0;
-  const hasApiKey = apiKey.trim().length > 0;
 
   return createPortal(
     <div
@@ -189,29 +180,13 @@ export function PublishWorkflowDialog({
                 <>
                   Upload or paste a{" "}
                   <span className="font-mono text-stone-gray">wallbit-cli</span>{" "}
-                  workflow YAML to publish on the registry.
+                  workflow YAML. You are publishing as your signed-in account.
                 </>
               ) : (
                 <>Publish this workflow to the Wallbit registry.</>
               )}
             </p>
           </div>
-
-          {!hasApiKey && (
-            <div className="rounded-lg border border-pale-sienna bg-paper-white px-4 py-3 text-sm text-slate-gray">
-              <p>
-                Create a registry API key in{" "}
-                <Link
-                  href="/account"
-                  className="font-medium text-fire-orange hover:underline"
-                  onClick={() => onClose()}
-                >
-                  Account
-                </Link>{" "}
-                first. It is shown once and saved in this browser for publishing.
-              </p>
-            </div>
-          )}
 
           {uploadMode && (
             <PublishYamlUpload
@@ -300,9 +275,7 @@ export function PublishWorkflowDialog({
             <button
               type="submit"
               className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
-              disabled={
-                submitting || !hasApiKey || (uploadMode && !hasYaml)
-              }
+              disabled={submitting || (uploadMode && !hasYaml)}
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
               Publish
