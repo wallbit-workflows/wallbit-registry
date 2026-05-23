@@ -18,8 +18,9 @@ export default function AccountPage() {
             <div>
               <h1 className="text-display text-ink-black">Account</h1>
               <p className="mt-2 text-lg leading-relaxed text-slate-gray">
-                Choose your registry username, then create an API key for
-                wallbit-cli.
+                Set your registry username and issue API keys for{" "}
+                <span className="font-mono text-stone-gray">wallbit-cli</span>.
+                The site itself uses your sign-in, not API keys.
               </p>
             </div>
             <Suspense fallback={<AccountSettingsSkeleton />}>

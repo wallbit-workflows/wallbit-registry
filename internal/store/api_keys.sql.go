@@ -73,3 +73,68 @@ func (q *Queries) GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKe
 	err := row.Scan(&i.ID, &i.UserID, &i.KeyPrefix)
 	return i, err
 }
+
+const listAPIKeysByUser = `-- name: ListAPIKeysByUser :many
+SELECT
+    id,
+    key_prefix,
+    name,
+    created_at
+FROM api_keys
+WHERE user_id = $1
+  AND revoked_at IS NULL
+ORDER BY created_at DESC
+`
+
+type ListAPIKeysByUserRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	KeyPrefix string             `json:"key_prefix"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListAPIKeysByUser(ctx context.Context, userID pgtype.UUID) ([]ListAPIKeysByUserRow, error) {
+	rows, err := q.db.Query(ctx, listAPIKeysByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAPIKeysByUserRow{}
+	for rows.Next() {
+		var i ListAPIKeysByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.KeyPrefix,
+			&i.Name,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokeAPIKey = `-- name: RevokeAPIKey :execrows
+UPDATE api_keys
+SET revoked_at = now()
+WHERE id = $1
+  AND user_id = $2
+  AND revoked_at IS NULL
+`
+
+type RevokeAPIKeyParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) RevokeAPIKey(ctx context.Context, arg RevokeAPIKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeAPIKey, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

@@ -83,3 +83,35 @@ func (s *Service) CreateAPIKey(ctx context.Context, userID pgtype.UUID, req Crea
 		Name:   name,
 	}, nil
 }
+
+func (s *Service) ListAPIKeys(ctx context.Context, userID pgtype.UUID) ([]APIKeyListItem, error) {
+	rows, err := s.queries.ListAPIKeysByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list api keys: %w", err)
+	}
+
+	items := make([]APIKeyListItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, APIKeyListItem{
+			ID:        row.ID.String(),
+			Prefix:    row.KeyPrefix,
+			Name:      row.Name,
+			CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	return items, nil
+}
+
+func (s *Service) RevokeAPIKey(ctx context.Context, userID, keyID pgtype.UUID) error {
+	n, err := s.queries.RevokeAPIKey(ctx, store.RevokeAPIKeyParams{
+		ID:     keyID,
+		UserID: userID,
+	})
+	if err != nil {
+		return fmt.Errorf("revoke api key: %w", err)
+	}
+	if n == 0 {
+		return ErrAPIKeyNotFound
+	}
+	return nil
+}
