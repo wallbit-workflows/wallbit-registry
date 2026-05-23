@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -12,11 +13,12 @@ import (
 )
 
 type Middleware struct {
-	queries *store.Queries
+	queries        *store.Queries
+	clerkSecretKey string
 }
 
-func NewMiddleware(queries *store.Queries) *Middleware {
-	return &Middleware{queries: queries}
+func NewMiddleware(queries *store.Queries, clerkSecretKey string) *Middleware {
+	return &Middleware{queries: queries, clerkSecretKey: clerkSecretKey}
 }
 
 func (m *Middleware) RequireUser(next http.HandlerFunc) http.HandlerFunc {
@@ -36,7 +38,15 @@ func (m *Middleware) resolveUserID(r *http.Request) (pgtype.UUID, error) {
 		return pgtype.UUID{}, err
 	}
 
-	row, err := m.queries.GetAPIKeyByHash(r.Context(), HashKey(token))
+	if strings.HasPrefix(token, registryKeyPrefix) {
+		return m.userIDFromRegistryKey(r.Context(), token)
+	}
+
+	return m.userIDFromClerkJWT(r.Context(), token)
+}
+
+func (m *Middleware) userIDFromRegistryKey(ctx context.Context, token string) (pgtype.UUID, error) {
+	row, err := m.queries.GetAPIKeyByHash(ctx, HashKey(token))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return pgtype.UUID{}, errors.New("invalid api key")

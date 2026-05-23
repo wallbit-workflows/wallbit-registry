@@ -29,3 +29,13 @@ RETURNING
     id,
     username,
     created_at;
+
+-- name: GetOrCreateUserByClerkID :one
+INSERT INTO users (clerk_user_id)
+VALUES ($1)
+ON CONFLICT (clerk_user_id) DO UPDATE
+SET clerk_user_id = EXCLUDED.clerk_user_id
+RETURNING
+    id,
+    username,
+    created_at;
