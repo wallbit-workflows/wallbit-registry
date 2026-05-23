@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteHeaderAuth } from "@/components/site-header-auth";
 
 export function SiteHeader() {
   return (
@@ -23,12 +24,7 @@ export function SiteHeader() {
           <Link href="/studio" className="nav-link hidden sm:inline">
             Workflow Studio
           </Link>
-          <Link href="/sign-in" className="nav-link">
-            Sign in
-          </Link>
-          <Link href="/sign-in" className="btn-primary">
-            Publish
-          </Link>
+          <SiteHeaderAuth />
         </nav>
       </div>
     </header>

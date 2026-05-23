@@ -32,6 +32,30 @@ func (q *Queries) CreateUser(ctx context.Context) (CreateUserRow, error) {
 	return i, err
 }
 
+const getOrCreateUserByClerkID = `-- name: GetOrCreateUserByClerkID :one
+INSERT INTO users (clerk_user_id)
+VALUES ($1)
+ON CONFLICT (clerk_user_id) DO UPDATE
+SET clerk_user_id = EXCLUDED.clerk_user_id
+RETURNING
+    id,
+    username,
+    created_at
+`
+
+type GetOrCreateUserByClerkIDRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Username  *string            `json:"username"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetOrCreateUserByClerkID(ctx context.Context, clerkUserID *string) (GetOrCreateUserByClerkIDRow, error) {
+	row := q.db.QueryRow(ctx, getOrCreateUserByClerkID, clerkUserID)
+	var i GetOrCreateUserByClerkIDRow
+	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT
     id,

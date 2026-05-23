@@ -37,7 +37,7 @@ func run(ctx context.Context) error {
 
 	queries := store.New(pool)
 	healthHandler := health.New(pool)
-	authMiddleware := auth.NewMiddleware(queries)
+	authMiddleware := auth.NewMiddleware(queries, cfg.ClerkSecretKey)
 	accountHandler := account.NewHandler(account.NewService(queries), authMiddleware)
 	workflowsHandler := workflows.NewHandler(workflows.NewService(pool, queries), authMiddleware)
 	handler := server.New(healthHandler, accountHandler, workflowsHandler)
