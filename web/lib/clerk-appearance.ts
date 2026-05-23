@@ -1,6 +1,4 @@
-import type { Appearance } from "@clerk/types";
-
-export const clerkAppearance: Appearance = {
+export const clerkAppearance = {
   elements: {
     rootBox: "font-sans",
     card: "shadow-[var(--shadow-feature)] rounded-[var(--radius-cards)]",

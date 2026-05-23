@@ -1,30 +1,58 @@
 "use client";
 
 import { SignInButton, useAuth, UserButton } from "@clerk/nextjs";
-import Link from "next/link";
+import { useState } from "react";
+import { PublishWorkflowDialog } from "@/components/publish-workflow-dialog";
+import { useRegistryProfile } from "@/components/registry-profile-provider";
+import {
+  SiteHeaderAuthSkeleton,
+  SiteHeaderAuthSkeletonSignedOut,
+} from "@/components/site-header-auth-skeleton";
 import { clerkAppearance } from "@/lib/clerk-appearance";
+import { clerkModalAuth } from "@/lib/clerk-modal-auth";
+import {
+  headerNavCtaButton,
+  headerNavTextButton,
+} from "@/lib/header-nav-classes";
+
+const userButtonAppearance = {
+  ...clerkAppearance,
+  elements: {
+    ...clerkAppearance.elements,
+    avatarBox: "h-9 w-9 ring-1 ring-cloud-canvas",
+    userButtonTrigger: "rounded-full focus:shadow-none",
+    userButtonPopoverCard: "shadow-[var(--shadow-feature)]",
+  },
+};
 
 export function SiteHeaderAuth() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { loading: profileLoading } = useRegistryProfile();
+  const [publishOpen, setPublishOpen] = useState(false);
 
   if (!isLoaded) {
-    return <span className="h-8 w-20" aria-hidden />;
+    return <SiteHeaderAuthSkeletonSignedOut />;
   }
 
   if (!isSignedIn) {
     return (
       <>
-        <SignInButton mode="modal" appearance={clerkAppearance}>
-          <button type="button" className="nav-link">
+        <SignInButton
+          mode="modal"
+          appearance={clerkModalAuth.appearance}
+          oauthFlow={clerkModalAuth.oauthFlow}
+        >
+          <button type="button" className={headerNavTextButton}>
             Sign in
           </button>
         </SignInButton>
         <SignInButton
           mode="modal"
-          appearance={clerkAppearance}
-          forceRedirectUrl="/account"
+          appearance={clerkModalAuth.appearance}
+          oauthFlow={clerkModalAuth.oauthFlow}
+          forceRedirectUrl={clerkModalAuth.forceRedirectUrl}
         >
-          <button type="button" className="btn-primary">
+          <button type="button" className={headerNavCtaButton}>
             Publish
           </button>
         </SignInButton>
@@ -32,23 +60,29 @@ export function SiteHeaderAuth() {
     );
   }
 
+  if (profileLoading) {
+    return <SiteHeaderAuthSkeleton />;
+  }
+
   return (
     <>
-      <Link href="/account" className="nav-link hidden sm:inline">
-        Account
-      </Link>
-      <Link href="/account" className="btn-primary">
+      <button
+        type="button"
+        className={headerNavCtaButton}
+        onClick={() => setPublishOpen(true)}
+      >
         Publish
-      </Link>
-      <UserButton
-        afterSignOutUrl="/"
-        appearance={{
-          ...clerkAppearance,
-          elements: {
-            ...clerkAppearance.elements,
-            avatarBox: "h-8 w-8",
-          },
-        }}
+      </button>
+      <div className="ml-1 flex items-center">
+        <UserButton
+          userProfileUrl="/account"
+          userProfileMode="navigation"
+          appearance={userButtonAppearance}
+        />
+      </div>
+      <PublishWorkflowDialog
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
       />
     </>
   );

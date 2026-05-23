@@ -1,32 +1,17 @@
-import { getRegistryURL } from "@/lib/api";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { WORKFLOWS_LIST_TAG } from "@/lib/api";
+import { registrySessionFetch } from "@/lib/registry-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type PublishBody = {
-  apiKey?: string;
   slug?: string;
   version?: string;
   description?: string;
   content?: string;
   username?: string;
 };
-
-async function registryFetch(
-  path: string,
-  apiKey: string,
-  init?: RequestInit,
-): Promise<Response> {
-  return fetch(`${getRegistryURL()}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      ...init?.headers,
-    },
-    cache: "no-store",
-  });
-}
 
 export async function POST(request: Request) {
   let body: PublishBody;
@@ -36,15 +21,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const rawKey = body.apiKey?.trim();
   const slug = body.slug?.trim();
   const version = body.version?.trim();
   const content = body.content;
-
-  if (!rawKey) {
-    return Response.json({ error: "API key is required" }, { status: 400 });
-  }
-  const apiKey = rawKey;
 
   if (!slug || !version || !content?.trim()) {
     return Response.json(
@@ -61,7 +40,7 @@ export async function POST(request: Request) {
   };
 
   async function doPublish() {
-    return registryFetch("/workflows", apiKey, {
+    return registrySessionFetch("/workflows", {
       method: "POST",
       body: JSON.stringify(publishPayload),
     });
@@ -77,7 +56,7 @@ export async function POST(request: Request) {
 
   const username = body.username?.trim();
   if (needsUsername && username) {
-    const patchRes = await registryFetch("/me", apiKey, {
+    const patchRes = await registrySessionFetch("/me", {
       method: "PATCH",
       body: JSON.stringify({ username }),
     });
@@ -90,6 +69,11 @@ export async function POST(request: Request) {
     }
     res = await doPublish();
     data = await res.json();
+  }
+
+  if (res.ok) {
+    revalidateTag(WORKFLOWS_LIST_TAG, { expire: 0 });
+    revalidatePath("/");
   }
 
   return Response.json(data, { status: res.status });
