@@ -25,11 +25,9 @@ export function AccountSettingsSkeleton() {
           <Skeleton className="h-4 w-full max-w-lg rounded" />
           <Skeleton className="h-4 w-[60%] max-w-xs rounded" />
         </div>
-        <Skeleton className="h-4 w-48 rounded" />
-        <div className="flex flex-wrap gap-element pt-1">
-          <Skeleton className="h-12 w-40 rounded-full" />
-          <Skeleton className="h-12 w-36 rounded-full" />
-        </div>
+        <Skeleton className="h-16 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-[var(--radius-inputs)]" />
+        <Skeleton className="h-12 w-28 rounded-full" />
       </section>
     </div>
   );

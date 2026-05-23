@@ -1,5 +1,7 @@
 package account
 
+import "time"
+
 type MeResponse struct {
 	ID       string  `json:"id"`
 	Username *string `json:"username,omitempty"`
@@ -17,4 +19,11 @@ type CreateAPIKeyResponse struct {
 	Token  string `json:"token"`
 	Prefix string `json:"prefix"`
 	Name   string `json:"name"`
+}
+
+type APIKeyListItem struct {
+	ID        string    `json:"id"`
+	Prefix    string    `json:"prefix"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
 }
