@@ -1,0 +1,32 @@
+.root {
+  overflow: hidden;
+  padding: 4px 0;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 6%,
+    #000 94%,
+    transparent
+  );
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  gap: 8px;
+  animation: starter-scroll 32s linear infinite;
+  will-change: transform;
+}
+
+.root:hover .track {
+  animation-play-state: paused;
+}
+
+@keyframes starter-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
