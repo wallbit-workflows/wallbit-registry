@@ -1,4 +1,6 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import { AppToaster } from "@/components/app-toaster";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import type { Metadata } from "next";
@@ -32,8 +34,14 @@ export default function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full overflow-y-auto">
-        {children}
-        <AppToaster />
+        <ClerkProvider
+          appearance={clerkAppearance}
+          signInFallbackRedirectUrl="/account"
+          signUpFallbackRedirectUrl="/account"
+        >
+          {children}
+          <AppToaster />
+        </ClerkProvider>
       </body>
     </html>
   );

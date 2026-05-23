@@ -64,7 +64,7 @@ export function SiteFooter() {
             aria-label="Footer"
           >
             <FooterLink href="/studio">Workflow Studio</FooterLink>
-            <FooterLink href="/sign-in">Publish</FooterLink>
+            <FooterLink href="/account">Publish</FooterLink>
             <FooterLink href={WALLBIT_CLI_DOCS_URL} external>
               wallbit-cli
             </FooterLink>
