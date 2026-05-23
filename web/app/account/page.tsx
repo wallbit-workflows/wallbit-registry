@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { AccountSettings } from "@/components/account-settings";
+import { AccountSettingsSkeleton } from "@/components/account-settings-skeleton";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -16,10 +18,13 @@ export default function AccountPage() {
             <div>
               <h1 className="text-display text-ink-black">Account</h1>
               <p className="mt-2 text-lg leading-relaxed text-slate-gray">
-                Set your username and create a registry API key for wallbit-cli.
+                Choose your registry username, then create an API key for
+                wallbit-cli.
               </p>
             </div>
-            <AccountSettings />
+            <Suspense fallback={<AccountSettingsSkeleton />}>
+              <AccountSettings />
+            </Suspense>
           </div>
         </div>
       </main>

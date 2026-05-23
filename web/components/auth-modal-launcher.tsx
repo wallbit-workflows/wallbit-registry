@@ -3,7 +3,7 @@
 import { useClerk } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { clerkAppearance } from "@/lib/clerk-appearance";
+import { clerkModalAuth } from "@/lib/clerk-modal-auth";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -18,13 +18,13 @@ export function AuthModalLauncher({ mode }: Props) {
   const redirectUrl =
     searchParams.get("redirect_url") ??
     process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ??
-    "/account";
+    clerkModalAuth.forceRedirectUrl;
 
   useEffect(() => {
     if (!loaded) return;
 
     const opts = {
-      appearance: clerkAppearance,
+      ...clerkModalAuth,
       forceRedirectUrl: redirectUrl,
       signInForceRedirectUrl: redirectUrl,
       signUpForceRedirectUrl: redirectUrl,

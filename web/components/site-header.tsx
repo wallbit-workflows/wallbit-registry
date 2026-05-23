@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeaderAuth } from "@/components/site-header-auth";
+import { headerNavText } from "@/lib/header-nav-classes";
 
 export function SiteHeader() {
   return (
@@ -20,8 +21,8 @@ export function SiteHeader() {
           Wallbit Registry
         </Link>
 
-        <nav className="flex items-center gap-element">
-          <Link href="/studio" className="nav-link hidden sm:inline">
+        <nav className="flex items-center gap-0.5">
+          <Link href="/studio" className={headerNavText}>
             Workflow Studio
           </Link>
           <SiteHeaderAuth />

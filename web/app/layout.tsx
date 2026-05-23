@@ -1,5 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { AppToaster } from "@/components/app-toaster";
+import { RegistryProfileProvider } from "@/components/registry-profile-provider";
+import { RegistryUsernameGate } from "@/components/registry-username-gate";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
@@ -36,11 +38,16 @@ export default function RootLayout({
       <body className="min-h-full overflow-y-auto">
         <ClerkProvider
           appearance={clerkAppearance}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
           signInFallbackRedirectUrl="/account"
           signUpFallbackRedirectUrl="/account"
         >
-          {children}
-          <AppToaster />
+          <RegistryProfileProvider>
+            <RegistryUsernameGate />
+            {children}
+            <AppToaster />
+          </RegistryProfileProvider>
         </ClerkProvider>
       </body>
     </html>

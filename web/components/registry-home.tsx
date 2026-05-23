@@ -3,6 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ListItem } from "@/lib/types";
+import { UsernameSetupBanner } from "./username-setup-banner";
 import { HeroSection } from "./hero-section";
 import { WorkflowCard } from "./workflow-card";
 
@@ -46,6 +47,7 @@ export function RegistryHome({ items }: Props) {
   return (
     <>
       <HeroSection query={query} onQueryChange={setQuery} />
+      <UsernameSetupBanner />
 
       <section id="workflows" className="pb-24 pt-12 sm:pt-16">
         <div className="page-wrap">

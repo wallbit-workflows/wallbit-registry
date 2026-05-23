@@ -4,10 +4,20 @@ const baseURL =
   process.env.NEXT_PUBLIC_REGISTRY_URL?.replace(/\/$/, "") ??
   "http://localhost:8080";
 
-async function registryFetch<T>(path: string, init?: RequestInit): Promise<T> {
+/** Invalidate after publish so the home list refetches. */
+export const WORKFLOWS_LIST_TAG = "registry-workflows";
+
+type RegistryFetchInit = RequestInit & {
+  next?: { revalidate?: number; tags?: string[] };
+};
+
+async function registryFetch<T>(
+  path: string,
+  init?: RegistryFetchInit,
+): Promise<T> {
   const res = await fetch(`${baseURL}${path}`, {
     ...init,
-    next: { revalidate: 60 },
+    next: init?.next ?? { revalidate: 60 },
   });
   if (!res.ok) {
     throw new Error(`registry ${path}: ${res.status}`);
@@ -20,9 +30,9 @@ export function getRegistryURL() {
 }
 
 export async function listWorkflows(limit = 50, offset = 0) {
-  return registryFetch<ListResponse>(
-    `/workflows?limit=${limit}&offset=${offset}`,
-  );
+  return registryFetch<ListResponse>(`/workflows?limit=${limit}&offset=${offset}`, {
+    next: { tags: [WORKFLOWS_LIST_TAG], revalidate: 60 },
+  });
 }
 
 export async function getWorkflowMetadata(username: string, slug: string) {

@@ -1,4 +1,5 @@
-import { getRegistryURL } from "@/lib/api";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { getRegistryURL, WORKFLOWS_LIST_TAG } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,6 +91,11 @@ export async function POST(request: Request) {
     }
     res = await doPublish();
     data = await res.json();
+  }
+
+  if (res.ok) {
+    revalidateTag(WORKFLOWS_LIST_TAG, { expire: 0 });
+    revalidatePath("/");
   }
 
   return Response.json(data, { status: res.status });

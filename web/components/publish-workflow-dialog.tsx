@@ -1,6 +1,9 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { PublishYamlUpload } from "@/components/publish-yaml-upload";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -8,26 +11,30 @@ import {
   PublishWorkflowError,
   publishWorkflow,
 } from "@/lib/publish-workflow";
-import {
-  clearRegistryApiKey,
-  getRegistryApiKey,
-  setRegistryApiKey,
-} from "@/lib/registry-auth";
+import { useRegistryProfile } from "@/components/registry-profile-provider";
+import { getRegistryApiKey, setRegistryApiKey } from "@/lib/registry-auth";
+import { validateRegistryUsername } from "@/lib/registry-username";
 import { semverFromYaml, slugFromYaml } from "@/lib/workflow-filename";
 
 type Props = {
   open: boolean;
-  yaml: string;
   onClose: () => void;
+  /** When omitted, the user must upload or paste YAML. */
+  yaml?: string;
   onPublished?: (result: { username: string; slug: string }) => void;
 };
 
 export function PublishWorkflowDialog({
   open,
-  yaml,
+  yaml: yamlProp,
   onClose,
   onPublished,
 }: Props) {
+  const router = useRouter();
+  const uploadMode = yamlProp === undefined;
+
+  const [yamlContent, setYamlContent] = useState("");
+  const [yamlFileName, setYamlFileName] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [username, setUsername] = useState("");
   const [slug, setSlug] = useState("");
@@ -35,6 +42,14 @@ export function PublishWorkflowDialog({
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { me } = useRegistryProfile();
+  const showUsernameField = !me?.username;
+
+  const applyYamlToFields = (content: string) => {
+    setYamlContent(content);
+    setSlug(slugFromYaml(content));
+    setVersion(semverFromYaml(content));
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -43,10 +58,18 @@ export function PublishWorkflowDialog({
   useEffect(() => {
     if (!open) return;
     setApiKey(getRegistryApiKey() ?? "");
-    setSlug(slugFromYaml(yaml));
-    setVersion(semverFromYaml(yaml));
+    setUsername(me?.username ?? "");
     setDescription("");
-  }, [open, yaml]);
+    setYamlFileName(null);
+
+    if (uploadMode) {
+      setYamlContent("");
+      setSlug("workflow");
+      setVersion("1.0.0");
+    } else {
+      applyYamlToFields(yamlProp);
+    }
+  }, [open, yamlProp, uploadMode, me?.username]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,10 +87,25 @@ export function PublishWorkflowDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const content = yamlContent.trim();
+    if (!content) {
+      toast.error("Workflow YAML is required");
+      return;
+    }
+
     const trimmedKey = apiKey.trim();
     if (!trimmedKey) {
       toast.error("Registry API key is required");
       return;
+    }
+
+    const trimmedUsername = username.trim();
+    if (showUsernameField) {
+      const validationError = validateRegistryUsername(trimmedUsername);
+      if (validationError) {
+        toast.error(validationError);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -77,12 +115,13 @@ export function PublishWorkflowDialog({
         slug: slug.trim(),
         version: version.trim(),
         description: description.trim() || undefined,
-        content: yaml,
-        username: username.trim() || undefined,
+        content,
+        username: trimmedUsername || undefined,
       });
 
       setRegistryApiKey(trimmedKey);
       onPublished?.({ username: result.username, slug: result.slug });
+      router.refresh();
 
       toast.success("Workflow published", {
         description: `${result.username}/${result.slug}@${result.version}`,
@@ -98,7 +137,7 @@ export function PublishWorkflowDialog({
     } catch (err) {
       if (err instanceof PublishWorkflowError) {
         if (err.status === 401) {
-          toast.error("Invalid API key");
+          toast.error("Invalid or missing API key — create a new one in Account");
         } else if (err.status === 409) {
           toast.error("Version already exists — bump semver and try again");
         } else if (
@@ -119,6 +158,9 @@ export function PublishWorkflowDialog({
 
   if (!open || !mounted) return null;
 
+  const hasYaml = yamlContent.trim().length > 0;
+  const hasApiKey = apiKey.trim().length > 0;
+
   return createPortal(
     <div
       className="publish-dialog-overlay fixed inset-0 z-[200] flex items-center justify-center bg-ink-black/40 p-4"
@@ -131,7 +173,7 @@ export function PublishWorkflowDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="publish-dialog-title"
-        className="publish-dialog-panel w-full max-w-md max-h-[min(90vh,100%)] overflow-y-auto rounded-[var(--radius-cards)] bg-paper-white text-ink-black shadow-[var(--shadow-feature)]"
+        className={`publish-dialog-panel w-full max-h-[min(90vh,100%)] overflow-y-auto rounded-[var(--radius-cards)] bg-paper-white text-ink-black shadow-[var(--shadow-feature)] ${uploadMode ? "max-w-lg" : "max-w-md"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <form className="stack-md p-6" onSubmit={(e) => void handleSubmit(e)}>
@@ -143,59 +185,73 @@ export function PublishWorkflowDialog({
               Publish workflow
             </h2>
             <p className="text-sm text-slate-gray">
-              Publishes to the Wallbit registry with your API key (
-              <code className="rounded bg-cloud-canvas px-1 font-mono text-xs">
-                wb_reg_…
-              </code>
-              ). Run{" "}
-              <code className="rounded bg-cloud-canvas px-1 font-mono text-xs">
-                go run ./cmd/seed
-              </code>{" "}
-              locally to create one.
+              {uploadMode ? (
+                <>
+                  Upload or paste a{" "}
+                  <span className="font-mono text-stone-gray">wallbit-cli</span>{" "}
+                  workflow YAML to publish on the registry.
+                </>
+              ) : (
+                <>Publish this workflow to the Wallbit registry.</>
+              )}
             </p>
           </div>
 
-          <label className="stack-sm block text-sm">
-            <span className="font-medium">Registry API key</span>
-            <input
-              type="password"
-              autoComplete="off"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="wb_reg_…"
-              className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
-              required
-            />
-            {apiKey && (
-              <button
-                type="button"
-                className="text-left text-xs text-stone-gray hover:text-ink-black"
-                onClick={() => {
-                  clearRegistryApiKey();
-                  setApiKey("");
-                }}
-              >
-                Clear saved key
-              </button>
-            )}
-          </label>
+          {!hasApiKey && (
+            <div className="rounded-lg border border-pale-sienna bg-paper-white px-4 py-3 text-sm text-slate-gray">
+              <p>
+                Create a registry API key in{" "}
+                <Link
+                  href="/account"
+                  className="font-medium text-fire-orange hover:underline"
+                  onClick={() => onClose()}
+                >
+                  Account
+                </Link>{" "}
+                first. It is shown once and saved in this browser for publishing.
+              </p>
+            </div>
+          )}
 
-          <label className="stack-sm block text-sm">
-            <span className="font-medium">Username</span>
-            <span className="text-xs text-slate-gray ml-1">
-              Required on first publish if not set yet
-            </span>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="your-handle"
-              minLength={3}
-              maxLength={32}
-              pattern="[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])?"
-              className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 text-sm focus:border-code-blue focus:outline-none"
+          {uploadMode && (
+            <PublishYamlUpload
+              yaml={yamlContent}
+              fileName={yamlFileName}
+              disabled={submitting}
+              onYamlChange={(content, name) => {
+                applyYamlToFields(content);
+                setYamlFileName(name);
+              }}
             />
-          </label>
+          )}
+
+          {showUsernameField && (
+            <label className="stack-sm block text-sm">
+              <span className="font-medium">Username</span>
+              <span className="text-xs text-slate-gray ml-1">Required</span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="your-handle"
+                required
+                minLength={3}
+                maxLength={32}
+                spellCheck={false}
+                className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
+              />
+              <span className="text-xs text-slate-gray">
+                Or set it once in{" "}
+                <Link
+                  href="/account?setup=username"
+                  className="text-fire-orange hover:underline"
+                >
+                  Account
+                </Link>
+                .
+              </span>
+            </label>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="stack-sm block text-sm">
@@ -244,7 +300,9 @@ export function PublishWorkflowDialog({
             <button
               type="submit"
               className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
-              disabled={submitting}
+              disabled={
+                submitting || !hasApiKey || (uploadMode && !hasYaml)
+              }
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
               Publish
