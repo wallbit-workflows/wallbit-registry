@@ -13,7 +13,11 @@ import {
 } from "@/lib/publish-workflow";
 import { useRegistryProfile } from "@/components/registry-profile-provider";
 import { validateRegistryUsername } from "@/lib/registry-username";
-import { semverFromYaml, slugFromYaml } from "@/lib/workflow-filename";
+import {
+  descriptionFromYaml,
+  semverFromYaml,
+  slugFromYaml,
+} from "@/lib/workflow-filename";
 
 type Props = {
   open: boolean;
@@ -47,6 +51,7 @@ export function PublishWorkflowDialog({
     setYamlContent(content);
     setSlug(slugFromYaml(content));
     setVersion(semverFromYaml(content));
+    setDescription(descriptionFromYaml(content));
   };
 
   useEffect(() => {

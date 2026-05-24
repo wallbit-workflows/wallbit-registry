@@ -1,10 +1,13 @@
-const PREVIEW_PALETTES = [
-  { bg: "#3d3566", accent: "#7b61ff" },
-  { bg: "#2d3d4f", accent: "#4dabf7" },
-  { bg: "#3d3a2e", accent: "#fab005" },
-  { bg: "#2f3d35", accent: "#51cf66" },
-  { bg: "#4a2f3d", accent: "#ff6b9d" },
-  { bg: "#2f3a4a", accent: "#74c0fc" },
+/** Warm peach/cream backgrounds — visible on cloud-canvas (#e5e7eb). */
+const PREVIEW_BACKGROUNDS = [
+  "#fcddcc",
+  "#fad4bc",
+  "#f5c9b4",
+  "#ffe0cc",
+  "#ffd6c4",
+  "#f8cfb8",
+  "#fce4d4",
+  "#ffe8d6",
 ] as const;
 
 const AVATAR_COLORS = [
@@ -23,7 +26,7 @@ function hash(key: string) {
 }
 
 export function previewFor(key: string) {
-  return PREVIEW_PALETTES[hash(key) % PREVIEW_PALETTES.length];
+  return PREVIEW_BACKGROUNDS[hash(key) % PREVIEW_BACKGROUNDS.length];
 }
 
 export function avatarColor(username: string) {

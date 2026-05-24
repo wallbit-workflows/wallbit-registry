@@ -1,5 +1,5 @@
 import { revalidatePath, revalidateTag } from "next/cache";
-import { WORKFLOWS_LIST_TAG } from "@/lib/api";
+import { WORKFLOWS_LIST_TAG, workflowContentTag } from "@/lib/api";
 import { registrySessionFetch } from "@/lib/registry-session";
 
 export const runtime = "nodejs";
@@ -74,6 +74,13 @@ export async function POST(request: Request) {
   if (res.ok) {
     revalidateTag(WORKFLOWS_LIST_TAG, { expire: 0 });
     revalidatePath("/");
+    const published = data as { username?: string; slug?: string };
+    if (published.username && published.slug) {
+      revalidateTag(workflowContentTag(published.username, published.slug), {
+        expire: 0,
+      });
+      revalidatePath(`/workflows/${published.username}/${published.slug}`);
+    }
   }
 
   return Response.json(data, { status: res.status });

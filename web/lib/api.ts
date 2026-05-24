@@ -50,3 +50,26 @@ export function downloadWorkflowURL(
   }
   return `${base}/download`;
 }
+
+export function workflowContentTag(username: string, slug: string) {
+  return `registry-workflow:${username}/${slug}`;
+}
+
+/** Fetch published workflow YAML for the given version. */
+export async function getWorkflowContent(
+  username: string,
+  slug: string,
+  version: string,
+) {
+  const url = downloadWorkflowURL(username, slug, version);
+  const res = await fetch(url, {
+    next: {
+      revalidate: 60,
+      tags: [workflowContentTag(username, slug), WORKFLOWS_LIST_TAG],
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`registry download ${username}/${slug}@${version}: ${res.status}`);
+  }
+  return res.text();
+}

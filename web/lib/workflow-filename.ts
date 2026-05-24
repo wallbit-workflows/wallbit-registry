@@ -15,6 +15,13 @@ export function slugFromYaml(yaml: string): string {
   return slug || "workflow";
 }
 
+/** Optional top-level `description:` in workflow YAML. */
+export function descriptionFromYaml(yaml: string): string {
+  const match = yaml.match(/^description:\s*(.+)\s*$/m);
+  if (!match) return "";
+  return match[1].trim().replace(/^['"]|['"]$/g, "");
+}
+
 /** Semver for registry publish; optional top-level `semver:` in YAML, else 1.0.0. */
 export function semverFromYaml(yaml: string): string {
   const semverMatch = yaml.match(/^semver:\s*['"]?([^'"\n]+)['"]?\s*$/m);

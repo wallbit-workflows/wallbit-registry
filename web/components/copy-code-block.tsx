@@ -12,11 +12,13 @@ const FEEDBACK_MS = 2000;
 type Props = {
   code: string;
   label?: string;
-  variant?: "elevated" | "chat";
+  variant?: "elevated" | "chat" | "plain";
   /** When set, shows a Download button that saves `code` to this filename. */
   downloadFilename?: string;
   /** When true, shows Publish to open the registry publish dialog. */
   publishable?: boolean;
+  /** Cap height and scroll long YAML on workflow pages. */
+  scrollable?: boolean;
 };
 
 type IconFeedbackButtonProps = {
@@ -78,15 +80,25 @@ export function CopyCodeBlock({
   variant = "elevated",
   downloadFilename,
   publishable = false,
+  scrollable = false,
 }: Props) {
   const [publishOpen, setPublishOpen] = useState(false);
 
+  const cardClass =
+    variant === "plain"
+      ? "rounded-[var(--radius-cards)] border border-cloud-canvas bg-white text-left"
+      : `code-card text-left${variant === "chat" ? " code-card--chat" : ""}`;
+
   return (
     <>
-      <div
-        className={`code-card text-left${variant === "chat" ? " code-card--chat" : ""}`}
-      >
-        <div className="code-card-header">
+      <div className={cardClass}>
+        <div
+          className={
+            variant === "plain"
+              ? "flex items-center justify-between gap-2 rounded-t-[var(--radius-cards)] border-b border-cloud-canvas px-4 py-3"
+              : "code-card-header"
+          }
+        >
           <span className="text-caption text-slate-gray">{label}</span>
           <div className="flex items-center gap-0.5">
             <IconFeedbackButton
@@ -116,7 +128,11 @@ export function CopyCodeBlock({
             )}
           </div>
         </div>
-        <pre className="code-card-body overflow-x-auto">{code}</pre>
+        <pre
+          className={`overflow-x-auto font-mono text-sm leading-[1.54] text-ink-black${variant === "plain" ? " rounded-b-[var(--radius-cards)] px-4 py-4" : " code-card-body"}${scrollable ? " max-h-[min(60vh,560px)] overflow-y-auto whitespace-pre" : ""}`}
+        >
+          {code}
+        </pre>
       </div>
 
       {publishable && (
