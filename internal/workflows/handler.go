@@ -58,6 +58,28 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	response.WriteYAML(w, http.StatusOK, []byte(content))
 }
 
+func (h *Handler) DownloadVersion(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	slug := r.PathValue("slug")
+	version := r.PathValue("version")
+
+	content, err := h.svc.DownloadVersion(r.Context(), username, slug, version)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			response.WriteError(w, http.StatusNotFound, "workflow version not found")
+			return
+		}
+		if errors.Is(err, ErrInvalidInput) {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, "failed to download workflow version")
+		return
+	}
+
+	response.WriteYAML(w, http.StatusOK, []byte(content))
+}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	limit, err := queryInt(r, "limit", defaultListLimit)
 	if err != nil {
@@ -144,6 +166,7 @@ func queryInt(r *http.Request, key string, fallback int) (int, error) {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /workflows", h.List)
 	mux.HandleFunc("GET /workflows/{username}/{slug}", h.Get)
+	mux.HandleFunc("GET /workflows/{username}/{slug}/versions/{version}/download", h.DownloadVersion)
 	mux.HandleFunc("GET /workflows/{username}/{slug}/download", h.Download)
 	mux.HandleFunc("POST /workflows", h.authMiddleware.RequireUser(h.Publish))
 }

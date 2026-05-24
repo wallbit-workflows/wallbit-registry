@@ -39,6 +39,14 @@ export async function getWorkflowMetadata(username: string, slug: string) {
   return registryFetch<Metadata>(`/workflows/${username}/${slug}`);
 }
 
-export function downloadWorkflowURL(username: string, slug: string) {
-  return `${baseURL}/workflows/${username}/${slug}/download`;
+export function downloadWorkflowURL(
+  username: string,
+  slug: string,
+  version?: string,
+) {
+  const base = `${baseURL}/workflows/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`;
+  if (version?.trim()) {
+    return `${base}/versions/${encodeURIComponent(version.trim())}/download`;
+  }
+  return `${base}/download`;
 }

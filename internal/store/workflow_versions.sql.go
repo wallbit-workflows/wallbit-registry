@@ -83,6 +83,42 @@ func (q *Queries) GetLatestWorkflowVersionBySlug(ctx context.Context, arg GetLat
 	return i, err
 }
 
+const getWorkflowVersionByAuthorSlugAndVersion = `-- name: GetWorkflowVersionByAuthorSlugAndVersion :one
+SELECT
+    wv.id,
+    wv.workflow_id,
+    wv.version,
+    wv.content,
+    wv.content_sha256,
+    wv.created_at
+FROM workflows w
+INNER JOIN users u ON u.id = w.author_id
+INNER JOIN workflow_versions wv ON wv.workflow_id = w.id
+WHERE u.username = $1
+  AND w.slug = $2
+  AND wv.version = $3
+`
+
+type GetWorkflowVersionByAuthorSlugAndVersionParams struct {
+	Username *string `json:"username"`
+	Slug     string  `json:"slug"`
+	Version  string  `json:"version"`
+}
+
+func (q *Queries) GetWorkflowVersionByAuthorSlugAndVersion(ctx context.Context, arg GetWorkflowVersionByAuthorSlugAndVersionParams) (WorkflowVersion, error) {
+	row := q.db.QueryRow(ctx, getWorkflowVersionByAuthorSlugAndVersion, arg.Username, arg.Slug, arg.Version)
+	var i WorkflowVersion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkflowID,
+		&i.Version,
+		&i.Content,
+		&i.ContentSha256,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const workflowVersionExists = `-- name: WorkflowVersionExists :one
 SELECT EXISTS (
     SELECT 1

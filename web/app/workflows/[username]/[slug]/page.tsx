@@ -19,8 +19,8 @@ export default async function WorkflowPage({ params }: Props) {
     notFound();
   }
 
-  const pullCmd = `wallbit workflow pull ${username}/${slug} -o ${slug}.yaml`;
-  const download = downloadWorkflowURL(username, slug);
+  const pullCmd = `wallbit workflow pull ${username}/${slug}@${meta.version} -o ${slug}.yaml`;
+  const download = downloadWorkflowURL(username, slug, meta.version);
   const name = meta.display_name || meta.slug;
 
   return (

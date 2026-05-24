@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -58,6 +59,27 @@ func (s *Service) Download(ctx context.Context, username, slug string) (content 
 	}
 
 	return version.Content, nil
+}
+
+func (s *Service) DownloadVersion(ctx context.Context, username, slug, version string) (string, error) {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return "", fmt.Errorf("%w: version is required", ErrInvalidInput)
+	}
+
+	row, err := s.queries.GetWorkflowVersionByAuthorSlugAndVersion(ctx, store.GetWorkflowVersionByAuthorSlugAndVersionParams{
+		Username: &username,
+		Slug:     slug,
+		Version:  version,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", fmt.Errorf("get workflow version: %w", err)
+	}
+
+	return row.Content, nil
 }
 
 func (s *Service) List(ctx context.Context, limit, offset int) ([]ListItem, error) {
