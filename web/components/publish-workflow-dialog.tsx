@@ -12,7 +12,6 @@ import {
   publishWorkflow,
 } from "@/lib/publish-workflow";
 import { useRegistryProfile } from "@/components/registry-profile-provider";
-import { validateRegistryUsername } from "@/lib/registry-username";
 import {
   descriptionFromYaml,
   semverFromYaml,
@@ -38,14 +37,12 @@ export function PublishWorkflowDialog({
 
   const [yamlContent, setYamlContent] = useState("");
   const [yamlFileName, setYamlFileName] = useState<string | null>(null);
-  const [username, setUsername] = useState("");
   const [slug, setSlug] = useState("");
   const [version, setVersion] = useState("1.0.0");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { me, refresh, needsUsername } = useRegistryProfile();
-  const showUsernameField = needsUsername;
+  const { needsUsername } = useRegistryProfile();
 
   const applyYamlToFields = (content: string) => {
     setYamlContent(content);
@@ -60,7 +57,6 @@ export function PublishWorkflowDialog({
 
   useEffect(() => {
     if (!open) return;
-    setUsername(me?.username ?? "");
     setDescription("");
     setYamlFileName(null);
 
@@ -71,7 +67,7 @@ export function PublishWorkflowDialog({
     } else {
       applyYamlToFields(yamlProp);
     }
-  }, [open, yamlProp, uploadMode, me?.username]);
+  }, [open, yamlProp, uploadMode]);
 
   useEffect(() => {
     if (!open) return;
@@ -95,14 +91,7 @@ export function PublishWorkflowDialog({
       return;
     }
 
-    const trimmedUsername = username.trim();
-    if (showUsernameField) {
-      const validationError = validateRegistryUsername(trimmedUsername);
-      if (validationError) {
-        toast.error(validationError);
-        return;
-      }
-    }
+    if (needsUsername) return;
 
     setSubmitting(true);
     try {
@@ -111,12 +100,7 @@ export function PublishWorkflowDialog({
         version: version.trim(),
         description: description.trim() || undefined,
         content,
-        username: showUsernameField ? trimmedUsername : undefined,
       });
-
-      if (showUsernameField) {
-        await refresh();
-      }
       onPublished?.({ username: result.username, slug: result.slug });
       router.refresh();
 
@@ -141,7 +125,7 @@ export function PublishWorkflowDialog({
           err.status === 400 &&
           err.message.toLowerCase().includes("username")
         ) {
-          toast.error("Set your registry username below, then publish again");
+          toast.error("Set your registry username in Account, then publish again");
         } else {
           toast.error(err.message);
         }
@@ -193,80 +177,68 @@ export function PublishWorkflowDialog({
             </p>
           </div>
 
-          {uploadMode && (
-            <PublishYamlUpload
-              yaml={yamlContent}
-              fileName={yamlFileName}
-              disabled={submitting}
-              onYamlChange={(content, name) => {
-                applyYamlToFields(content);
-                setYamlFileName(name);
-              }}
-            />
-          )}
-
-          {showUsernameField && (
-            <label className="stack-sm block text-sm">
-              <span className="font-medium">Username</span>
-              <span className="text-xs text-slate-gray ml-1">Required</span>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="your-handle"
-                required
-                minLength={3}
-                maxLength={32}
-                spellCheck={false}
-                className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
-              />
-              <span className="text-xs text-slate-gray">
-                Or set it once in{" "}
-                <Link
-                  href="/account?setup=username"
-                  className="text-fire-orange hover:underline"
-                >
-                  Account
-                </Link>
+          {needsUsername ? (
+            <div className="rounded-[var(--radius-inputs)] border border-pale-sienna bg-paper-white px-4 py-4 stack-sm">
+              <p className="text-sm text-ink-black">
+                Choose a registry username before you can publish. It appears in
+                public URLs like{" "}
+                <span className="font-mono text-stone-gray">username/slug</span>
                 .
-              </span>
-            </label>
+              </p>
+              <p className="text-sm text-slate-gray">
+                Set it once in Account, then come back to publish.
+              </p>
+            </div>
+          ) : (
+            <>
+              {uploadMode && (
+                <PublishYamlUpload
+                  yaml={yamlContent}
+                  fileName={yamlFileName}
+                  disabled={submitting}
+                  onYamlChange={(content, name) => {
+                    applyYamlToFields(content);
+                    setYamlFileName(name);
+                  }}
+                />
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="stack-sm block text-sm">
+                  <span className="font-medium">Slug</span>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    required
+                    className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
+                  />
+                </label>
+                <label className="stack-sm block text-sm">
+                  <span className="font-medium">Version</span>
+                  <input
+                    type="text"
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    required
+                    placeholder="1.0.0"
+                    className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
+                  />
+                </label>
+              </div>
+
+              <label className="stack-sm block text-sm">
+                <span className="font-medium">Description</span>
+                <span className="text-xs text-slate-gray ml-1">Optional</span>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 text-sm focus:border-code-blue focus:outline-none"
+                />
+              </label>
+            </>
           )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="stack-sm block text-sm">
-              <span className="font-medium">Slug</span>
-              <input
-                type="text"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                required
-                className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
-              />
-            </label>
-            <label className="stack-sm block text-sm">
-              <span className="font-medium">Version</span>
-              <input
-                type="text"
-                value={version}
-                onChange={(e) => setVersion(e.target.value)}
-                required
-                placeholder="1.0.0"
-                className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 font-mono text-sm focus:border-code-blue focus:outline-none"
-              />
-            </label>
-          </div>
-
-          <label className="stack-sm block text-sm">
-            <span className="font-medium">Description</span>
-            <span className="text-xs text-slate-gray ml-1">Optional</span>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-[var(--radius-inputs)] border border-cloud-canvas bg-white px-3 py-2 text-sm focus:border-code-blue focus:outline-none"
-            />
-          </label>
 
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -277,14 +249,24 @@ export function PublishWorkflowDialog({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
-              disabled={submitting || (uploadMode && !hasYaml)}
-            >
-              {submitting && <Loader2 className="size-4 animate-spin" />}
-              Publish
-            </button>
+            {needsUsername ? (
+              <Link
+                href="/account?setup=username"
+                className="btn-primary px-4 py-2 text-sm"
+                onClick={onClose}
+              >
+                Set username in Account
+              </Link>
+            ) : (
+              <button
+                type="submit"
+                className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
+                disabled={submitting || (uploadMode && !hasYaml)}
+              >
+                {submitting && <Loader2 className="size-4 animate-spin" />}
+                Publish
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { SignInButton, useAuth, UserButton } from "@clerk/nextjs";
+import Link from "next/link";
 import { useState } from "react";
 import { PublishWorkflowDialog } from "@/components/publish-workflow-dialog";
 import { useRegistryProfile } from "@/components/registry-profile-provider";
@@ -27,7 +28,7 @@ const userButtonAppearance = {
 
 export function SiteHeaderAuth() {
   const { isLoaded, isSignedIn } = useAuth();
-  const { loading: profileLoading } = useRegistryProfile();
+  const { loading: profileLoading, needsUsername } = useRegistryProfile();
   const [publishOpen, setPublishOpen] = useState(false);
 
   if (!isLoaded) {
@@ -66,13 +67,19 @@ export function SiteHeaderAuth() {
 
   return (
     <>
-      <button
-        type="button"
-        className={headerNavCtaButton}
-        onClick={() => setPublishOpen(true)}
-      >
-        Publish
-      </button>
+      {needsUsername ? (
+        <Link href="/account?setup=username" className={headerNavCtaButton}>
+          Publish
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className={headerNavCtaButton}
+          onClick={() => setPublishOpen(true)}
+        >
+          Publish
+        </button>
+      )}
       <div className="ml-1 flex items-center">
         <UserButton
           userProfileUrl="/account"

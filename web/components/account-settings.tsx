@@ -186,7 +186,7 @@ export function AccountSettings() {
             : "Profile"}
         </h2>
         <p className="text-sm text-slate-gray">
-          Your public handle on the registry. Workflow URLs use{" "}
+          This username is public. Every workflow URL starts with it:{" "}
           <span className="font-mono text-stone-gray">username/slug</span>.
         </p>
         {savedUsername && usernameDirty && (
@@ -205,7 +205,7 @@ export function AccountSettings() {
               onChange={(e) => setUsername(e.target.value)}
               className="input-field font-mono"
               placeholder="jeremyjsx"
-              autoComplete="username"
+              autoComplete="off"
               autoFocus={needsUsername}
               required
               minLength={3}
