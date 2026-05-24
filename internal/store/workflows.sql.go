@@ -262,3 +262,22 @@ func (q *Queries) UpdateWorkflowLatestVersion(ctx context.Context, arg UpdateWor
 	)
 	return i, err
 }
+
+const updateWorkflowOnPublish = `-- name: UpdateWorkflowOnPublish :exec
+UPDATE workflows
+SET
+    display_name = $2,
+    description = $3
+WHERE id = $1
+`
+
+type UpdateWorkflowOnPublishParams struct {
+	ID          pgtype.UUID `json:"id"`
+	DisplayName string      `json:"display_name"`
+	Description string      `json:"description"`
+}
+
+func (q *Queries) UpdateWorkflowOnPublish(ctx context.Context, arg UpdateWorkflowOnPublishParams) error {
+	_, err := q.db.Exec(ctx, updateWorkflowOnPublish, arg.ID, arg.DisplayName, arg.Description)
+	return err
+}

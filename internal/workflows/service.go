@@ -127,6 +127,7 @@ func (s *Service) Publish(ctx context.Context, authorID pgtype.UUID, req Publish
 
 	digest := contentDigest(req.Content)
 	displayName := workflowDisplayName(req.Content, req.Slug)
+	description := resolvePublishDescription(req, req.Content)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -148,7 +149,7 @@ func (s *Service) Publish(ctx context.Context, authorID pgtype.UUID, req Publish
 			AuthorID:    authorID,
 			Slug:        req.Slug,
 			DisplayName: displayName,
-			Description: req.Description,
+			Description: description,
 		})
 		if err != nil {
 			return PublishResponse{}, fmt.Errorf("create workflow: %w", err)
@@ -163,6 +164,14 @@ func (s *Service) Publish(ctx context.Context, authorID pgtype.UUID, req Publish
 		}
 		if exists {
 			return PublishResponse{}, ErrConflict
+		}
+
+		if err := qtx.UpdateWorkflowOnPublish(ctx, store.UpdateWorkflowOnPublishParams{
+			ID:          workflow.ID,
+			DisplayName: displayName,
+			Description: description,
+		}); err != nil {
+			return PublishResponse{}, fmt.Errorf("update workflow metadata: %w", err)
 		}
 	}
 

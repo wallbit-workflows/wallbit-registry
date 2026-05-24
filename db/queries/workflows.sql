@@ -67,6 +67,13 @@ RETURNING
     latest_version_id,
     created_at;
 
+-- name: UpdateWorkflowOnPublish :exec
+UPDATE workflows
+SET
+    display_name = $2,
+    description = $3
+WHERE id = $1;
+
 -- name: UpdateWorkflowLatestVersion :one
 UPDATE workflows w
 SET latest_version_id = $2

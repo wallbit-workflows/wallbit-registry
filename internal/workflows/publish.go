@@ -32,12 +32,32 @@ func contentDigest(content string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+type workflowDocMeta struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+}
+
+func parseWorkflowDoc(content string) workflowDocMeta {
+	var doc workflowDocMeta
+	_ = yaml.Unmarshal([]byte(content), &doc)
+	return doc
+}
+
 func workflowDisplayName(content, slug string) string {
-	var doc struct {
-		Name string `yaml:"name"`
-	}
-	if err := yaml.Unmarshal([]byte(content), &doc); err != nil || strings.TrimSpace(doc.Name) == "" {
+	doc := parseWorkflowDoc(content)
+	if doc.Name == "" {
 		return slug
 	}
 	return strings.TrimSpace(doc.Name)
+}
+
+func workflowDescriptionFromContent(content string) string {
+	return strings.TrimSpace(parseWorkflowDoc(content).Description)
+}
+
+func resolvePublishDescription(req PublishRequest, content string) string {
+	if d := strings.TrimSpace(req.Description); d != "" {
+		return d
+	}
+	return workflowDescriptionFromContent(content)
 }
