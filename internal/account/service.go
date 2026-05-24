@@ -67,7 +67,7 @@ func (s *Service) CreateAPIKey(ctx context.Context, userID pgtype.UUID, req Crea
 	}
 
 	name := strings.TrimSpace(req.Name)
-	_, err = s.queries.CreateAPIKey(ctx, store.CreateAPIKeyParams{
+	row, err := s.queries.CreateAPIKey(ctx, store.CreateAPIKeyParams{
 		UserID:    userID,
 		KeyHash:   auth.HashKey(token),
 		KeyPrefix: prefix,
@@ -78,6 +78,7 @@ func (s *Service) CreateAPIKey(ctx context.Context, userID pgtype.UUID, req Crea
 	}
 
 	return CreateAPIKeyResponse{
+		ID:     row.ID.String(),
 		Token:  token,
 		Prefix: prefix,
 		Name:   name,

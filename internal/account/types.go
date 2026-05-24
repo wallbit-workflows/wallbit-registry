@@ -16,6 +16,7 @@ type CreateAPIKeyRequest struct {
 }
 
 type CreateAPIKeyResponse struct {
+	ID     string `json:"id"`
 	Token  string `json:"token"`
 	Prefix string `json:"prefix"`
 	Name   string `json:"name"`
