@@ -9,6 +9,7 @@ import {
 } from "@/lib/studio-attachments";
 import { StarterMarquee } from "@/components/starter-marquee";
 import { WorkflowAttachmentChip } from "@/components/workflow-attachment-chip";
+import { useStudioAuth } from "@/lib/use-studio-auth";
 
 type Props = {
   input: string;
@@ -35,12 +36,15 @@ export function StudioChatComposer({
   onStarterSelect,
   canReset,
 }: Props) {
+  const { isLoaded, isSignedIn, promptSignIn, guardAction } = useStudioAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
   const canSend =
-    !streaming && (input.trim().length > 0 || attachments.length > 0);
+    isSignedIn &&
+    !streaming &&
+    (input.trim().length > 0 || attachments.length > 0);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -111,8 +115,12 @@ export function StudioChatComposer({
         <button
           type="button"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-stone-gray transition hover:bg-cloud-canvas hover:text-ink-black disabled:opacity-40"
-          onClick={() => fileRef.current?.click()}
-          disabled={streaming}
+          onClick={() =>
+            guardAction(() => {
+              fileRef.current?.click();
+            })
+          }
+          disabled={streaming || !isLoaded}
           aria-label="Attach YAML workflow"
         >
           <Plus className="size-5" strokeWidth={1.75} aria-hidden />
@@ -122,26 +130,39 @@ export function StudioChatComposer({
           ref={textareaRef}
           rows={1}
           value={input}
+          readOnly={!isSignedIn}
           onChange={(e) => {
+            if (!isSignedIn) return;
             onInputChange(e.target.value);
             resizeTextarea();
           }}
+          onFocus={() => {
+            if (!isSignedIn) {
+              textareaRef.current?.blur();
+              promptSignIn();
+            }
+          }}
           onKeyDown={(e) => {
+            if (!isSignedIn) return;
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               if (canSend) onSend();
             }
           }}
-          disabled={streaming}
-          placeholder="Describe your workflow…"
-          className="max-h-32 min-h-[40px] flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-snug text-ink-black placeholder:text-silver-mist focus:outline-none"
+          disabled={streaming || !isLoaded}
+          placeholder={
+            isLoaded && !isSignedIn
+              ? "Sign in to use Workflow Studio…"
+              : "Describe your workflow…"
+          }
+          className="max-h-32 min-h-[40px] flex-1 cursor-text resize-none bg-transparent py-2.5 text-[15px] leading-snug text-ink-black placeholder:text-silver-mist focus:outline-none read-only:cursor-pointer"
           aria-label="Message"
         />
 
         <button
           type="button"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fire-orange text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
-          onClick={onSend}
+          onClick={() => guardAction(onSend)}
           disabled={!canSend}
           aria-label="Send message"
         >
@@ -149,7 +170,11 @@ export function StudioChatComposer({
         </button>
       </div>
 
-      {showStarters && <StarterMarquee onSelect={onStarterSelect} />}
+      {showStarters && (
+        <StarterMarquee
+          onSelect={(prompt) => guardAction(() => onStarterSelect(prompt))}
+        />
+      )}
 
       {canReset && onReset && (
         <button

@@ -5,6 +5,7 @@ import { ChatMessageContent } from "@/components/chat-message-content";
 import { StudioChatComposer } from "@/components/studio-chat-composer";
 import { StudioHero } from "@/components/studio-hero";
 import type { StudioAttachment } from "@/lib/studio-attachments";
+import { useStudioAuth } from "@/lib/use-studio-auth";
 
 type ChatRole = "user" | "assistant";
 
@@ -16,6 +17,7 @@ type ChatMessage = {
 };
 
 export function WorkflowStudio() {
+  const { isSignedIn } = useStudioAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<StudioAttachment[]>([]);
@@ -30,6 +32,7 @@ export function WorkflowStudio() {
 
   const send = useCallback(
     async (text?: string, files: StudioAttachment[] = attachments) => {
+      if (!isSignedIn) return;
       const prompt = (text ?? input).trim();
       if ((!prompt && files.length === 0) || streaming) return;
 
@@ -136,7 +139,7 @@ export function WorkflowStudio() {
         abortRef.current = null;
       }
     },
-    [agentId, streaming, input, attachments],
+    [agentId, streaming, input, attachments, isSignedIn],
   );
 
   const reset = () => {
