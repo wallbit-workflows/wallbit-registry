@@ -2,21 +2,14 @@
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { useCallback } from "react";
-import { clerkModalAuth } from "@/lib/clerk-modal-auth";
-
-const studioRedirect = {
-  ...clerkModalAuth,
-  forceRedirectUrl: "/studio",
-  signInForceRedirectUrl: "/studio",
-  signUpForceRedirectUrl: "/studio",
-};
+import { clerkModalAuthWithRedirect } from "@/lib/clerk-modal-auth";
 
 export function useStudioAuth() {
   const { isLoaded, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
 
   const promptSignIn = useCallback(() => {
-    openSignIn(studioRedirect);
+    openSignIn(clerkModalAuthWithRedirect("/studio"));
   }, [openSignIn]);
 
   const guardAction = useCallback(

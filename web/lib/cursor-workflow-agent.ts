@@ -21,7 +21,7 @@ async function* emitTextChunks(text: string): AsyncGenerator<string> {
   }
 }
 
-function extractTextDelta(payload: Record<string, unknown>): string | null {
+function extractAssistantTextDelta(payload: Record<string, unknown>): string | null {
   if (typeof payload.text === "string" && payload.text) {
     return payload.text;
   }
@@ -126,7 +126,8 @@ async function* streamViaCursorApi(
   const reader = streamRes.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let finalText = "";
+  /** Visible assistant output streamed so far (excludes thinking). */
+  let streamedAssistant = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -150,20 +151,17 @@ async function* streamViaCursorApi(
 
       const payload = JSON.parse(data) as Record<string, unknown>;
 
-      const delta =
-        event === "assistant" ||
-        event === "thinking" ||
-        event === "interaction_update"
-          ? extractTextDelta(payload)
-          : null;
-      if (delta) {
-        finalText += delta;
-        yield { type: "text", delta };
+      if (event === "assistant") {
+        const delta = extractAssistantTextDelta(payload);
+        if (delta) {
+          streamedAssistant += delta;
+          yield { type: "text", delta };
+        }
       }
 
       if (event === "result") {
         const text =
-          typeof payload.text === "string" ? payload.text : finalText;
+          typeof payload.text === "string" ? payload.text : streamedAssistant;
         const status = payload.status;
         if (status === "ERROR") {
           yield {
@@ -174,27 +172,27 @@ async function* streamViaCursorApi(
         }
 
         const trailing =
-          text.length > finalText.length
-            ? text.slice(finalText.length)
-            : text && !finalText
+          text.length > streamedAssistant.length
+            ? text.slice(streamedAssistant.length)
+            : text && !streamedAssistant
               ? text
               : "";
 
         if (trailing) {
-          if (!finalText) {
+          if (!streamedAssistant) {
             for await (const chunk of emitTextChunks(trailing)) {
-              finalText += chunk;
+              streamedAssistant += chunk;
               yield { type: "text", delta: chunk };
             }
           } else {
-            finalText += trailing;
+            streamedAssistant += trailing;
             yield { type: "text", delta: trailing };
           }
         }
 
         yield {
           type: "done",
-          result: text || finalText,
+          result: text || streamedAssistant,
           runId: typeof payload.runId === "string" ? payload.runId : runId,
         };
         return;
@@ -226,7 +224,7 @@ async function* streamViaCursorApi(
 
   yield {
     type: "done",
-    result: terminal.result ?? finalText,
+    result: terminal.result ?? streamedAssistant,
     runId: terminal.id,
   };
 }
@@ -265,11 +263,11 @@ async function* streamViaCursorSdk(
     const run = await agent.send(message);
 
     for await (const event of run.stream()) {
-      if (event.type === "assistant") {
-        for (const block of event.message.content) {
-          if (block.type === "text" && block.text) {
-            yield { type: "text", delta: block.text };
-          }
+      // Only surface final assistant text — skip thinking, tools, etc.
+      if (event.type !== "assistant") continue;
+      for (const block of event.message.content) {
+        if (block.type === "text" && block.text) {
+          yield { type: "text", delta: block.text };
         }
       }
     }

@@ -5,15 +5,14 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { clerkModalAuth } from "@/lib/clerk-modal-auth";
 
-type Mode = "sign-in" | "sign-up";
-
 type Props = {
-  mode: Mode;
+  /** Kept for route compatibility; sign-in modal handles new users via Clerk transfer. */
+  mode?: "sign-in" | "sign-up";
 };
 
-/** Opens Clerk modal when middleware redirects here (no full-page form). */
-export function AuthModalLauncher({ mode }: Props) {
-  const { loaded, openSignIn, openSignUp } = useClerk();
+/** Opens the sign-in modal (new accounts are created via Clerk's sign-in → sign-up transfer). */
+export function AuthModalLauncher(_props: Props) {
+  const { loaded, openSignIn } = useClerk();
   const searchParams = useSearchParams();
   const redirectUrl =
     searchParams.get("redirect_url") ??
@@ -23,19 +22,12 @@ export function AuthModalLauncher({ mode }: Props) {
   useEffect(() => {
     if (!loaded) return;
 
-    const opts = {
+    openSignIn({
       ...clerkModalAuth,
       forceRedirectUrl: redirectUrl,
-      signInForceRedirectUrl: redirectUrl,
       signUpForceRedirectUrl: redirectUrl,
-    };
-
-    if (mode === "sign-in") {
-      openSignIn(opts);
-      return;
-    }
-    openSignUp(opts);
-  }, [loaded, mode, openSignIn, openSignUp, redirectUrl]);
+    });
+  }, [loaded, openSignIn, redirectUrl]);
 
   return (
     <main className="min-h-[calc(100dvh-4rem)] bg-cloud-canvas" aria-hidden />
