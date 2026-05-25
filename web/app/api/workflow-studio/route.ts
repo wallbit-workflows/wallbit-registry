@@ -86,7 +86,9 @@ export async function POST(request: Request) {
           prompt,
           agentId: body.agentId,
         })) {
-          if (item.type === "agent") {
+          if (item.type === "status") {
+            push("status", { phase: item.phase });
+          } else if (item.type === "agent") {
             push("agent", { agentId: item.agentId });
           } else if (item.type === "text") {
             push("text", { delta: item.delta });
@@ -114,6 +116,7 @@ export async function POST(request: Request) {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
       ...studioRateLimitHeaders(rateLimit),
     },
   });

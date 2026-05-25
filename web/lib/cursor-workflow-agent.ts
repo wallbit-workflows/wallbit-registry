@@ -5,10 +5,31 @@ const CURSOR_API_BASE = "https://api.cursor.com";
 const WORKFLOW_MODEL_ID = "composer-2.5";
 
 export type StudioStreamEvent =
+  | { type: "status"; phase: "starting" | "generating" }
   | { type: "agent"; agentId: string }
   | { type: "text"; delta: string }
   | { type: "done"; result: string; runId: string }
   | { type: "error"; message: string; retryable?: boolean };
+
+const REST_CHUNK_SIZE = 64;
+const REST_CHUNK_DELAY_MS = 12;
+
+async function* emitTextChunks(text: string): AsyncGenerator<string> {
+  for (let i = 0; i < text.length; i += REST_CHUNK_SIZE) {
+    yield text.slice(i, i + REST_CHUNK_SIZE);
+    await new Promise((resolve) => setTimeout(resolve, REST_CHUNK_DELAY_MS));
+  }
+}
+
+function extractTextDelta(payload: Record<string, unknown>): string | null {
+  if (typeof payload.text === "string" && payload.text) {
+    return payload.text;
+  }
+  if (payload.type === "text-delta" && typeof payload.delta === "string") {
+    return payload.delta;
+  }
+  return null;
+}
 
 type RunOptions = {
   apiKey: string;
@@ -86,6 +107,7 @@ async function* streamViaCursorApi(
   }
 
   yield { type: "agent", agentId };
+  yield { type: "status", phase: "generating" };
 
   const streamRes = await fetch(
     `${CURSOR_API_BASE}/v1/agents/${agentId}/runs/${runId}/stream`,
@@ -128,9 +150,15 @@ async function* streamViaCursorApi(
 
       const payload = JSON.parse(data) as Record<string, unknown>;
 
-      if (event === "assistant" && typeof payload.text === "string") {
-        finalText += payload.text;
-        yield { type: "text", delta: payload.text };
+      const delta =
+        event === "assistant" ||
+        event === "thinking" ||
+        event === "interaction_update"
+          ? extractTextDelta(payload)
+          : null;
+      if (delta) {
+        finalText += delta;
+        yield { type: "text", delta };
       }
 
       if (event === "result") {
@@ -144,9 +172,29 @@ async function* streamViaCursorApi(
           };
           return;
         }
+
+        const trailing =
+          text.length > finalText.length
+            ? text.slice(finalText.length)
+            : text && !finalText
+              ? text
+              : "";
+
+        if (trailing) {
+          if (!finalText) {
+            for await (const chunk of emitTextChunks(trailing)) {
+              finalText += chunk;
+              yield { type: "text", delta: chunk };
+            }
+          } else {
+            finalText += trailing;
+            yield { type: "text", delta: trailing };
+          }
+        }
+
         yield {
           type: "done",
-          result: text,
+          result: text || finalText,
           runId: typeof payload.runId === "string" ? payload.runId : runId,
         };
         return;
@@ -281,6 +329,8 @@ function shouldFallbackSdkToApi(err: unknown): boolean {
 export async function* streamWorkflowStudio(
   options: RunOptions,
 ): AsyncGenerator<StudioStreamEvent> {
+  yield { type: "status", phase: "starting" };
+
   const useApi = preferCursorCloudApi();
 
   if (!useApi && !sdkLoadFailed) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessageContent } from "@/components/chat-message-content";
 import { StudioChatComposer } from "@/components/studio-chat-composer";
@@ -25,6 +26,9 @@ export function WorkflowStudio() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftAssistant, setDraftAssistant] = useState("");
+  const [studioPhase, setStudioPhase] = useState<"starting" | "generating">(
+    "starting",
+  );
   const abortRef = useRef<AbortController | null>(null);
   const scrollEndRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +42,7 @@ export function WorkflowStudio() {
 
       setError(null);
       setDraftAssistant("");
+      setStudioPhase("starting");
       setStreaming(true);
 
       const userMsg: ChatMessage = {
@@ -105,11 +110,21 @@ export function WorkflowStudio() {
             if (!data) continue;
             const payload = JSON.parse(data) as Record<string, unknown>;
 
+            if (event === "status") {
+              const phase = payload.phase;
+              if (phase === "starting" || phase === "generating") {
+                setStudioPhase(phase);
+              }
+            }
             if (event === "agent" && typeof payload.agentId === "string") {
               setAgentId(payload.agentId);
             }
             if (event === "text" && typeof payload.delta === "string") {
               accumulated += payload.delta;
+              setDraftAssistant(accumulated);
+            }
+            if (event === "done" && typeof payload.result === "string") {
+              accumulated = payload.result;
               setDraftAssistant(accumulated);
             }
             if (event === "error") {
@@ -198,14 +213,28 @@ export function WorkflowStudio() {
                 </div>
               ))}
 
-              {streaming && draftAssistant && (
+              {streaming && (
                 <div className="mr-4 stack-sm">
                   <p className="text-caption text-slate-gray">Assistant</p>
-                  <ChatMessageContent
-                    content={draftAssistant}
-                    role="assistant"
-                    streaming
-                  />
+                  {draftAssistant ? (
+                    <ChatMessageContent
+                      content={draftAssistant}
+                      role="assistant"
+                      streaming
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-2xl bg-paper-white px-4 py-3 text-sm text-slate-gray shadow-[var(--shadow-feature)]">
+                      <Loader2
+                        className="size-4 shrink-0 animate-spin text-fire-orange"
+                        aria-hidden
+                      />
+                      <span>
+                        {studioPhase === "starting"
+                          ? "Connecting to the agent…"
+                          : "Generating workflow…"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
