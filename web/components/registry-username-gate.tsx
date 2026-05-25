@@ -15,8 +15,6 @@ export function RegistryUsernameGate() {
   useEffect(() => {
     if (!isLoaded || loading || !isSignedIn || !needsUsername) return;
     if (pathname.startsWith("/account")) return;
-    if (pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up")) return;
-
     if (pathname.startsWith("/studio")) {
       router.replace("/account?setup=username");
     }

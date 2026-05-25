@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { SignInButton, useAuth } from "@clerk/nextjs";
 import { Copy, Loader2, Plus, Trash2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +17,7 @@ import {
   getIssuedKeyToken,
   rememberIssuedKeyToken,
 } from "@/lib/cli-issued-keys";
+import { clerkModalAppearance } from "@/lib/clerk-modal-auth";
 import {
   normalizeRegistryUsername,
   validateRegistryUsername,
@@ -36,7 +37,7 @@ function maskPrefix(prefix: string) {
 export function AccountSettings() {
   const searchParams = useSearchParams();
   const setupMode = searchParams.get("setup") === "username";
-  const { isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const { me, loading, needsUsername, refresh } = useRegistryProfile();
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
@@ -158,6 +159,32 @@ export function AccountSettings() {
     rememberIssuedKeyToken(key.token, { id: key.id, prefix: key.prefix });
     void loadKeys();
   };
+
+  if (!isLoaded) {
+    return <AccountSettingsSkeleton />;
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="feature-card stack-md max-w-lg p-6">
+        <h2 className="text-subheading text-ink-black">Sign in required</h2>
+        <p className="text-sm text-slate-gray">
+          Sign in to set your registry username and manage API keys for{" "}
+          <span className="font-mono text-stone-gray">wallbit-cli</span>.
+        </p>
+        <SignInButton
+          mode="modal"
+          appearance={clerkModalAppearance}
+          forceRedirectUrl="/account"
+          fallbackRedirectUrl="/account"
+        >
+          <button type="button" className="btn-primary w-fit">
+            Sign in
+          </button>
+        </SignInButton>
+      </div>
+    );
+  }
 
   if (loading) {
     return <AccountSettingsSkeleton />;

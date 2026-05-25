@@ -36,13 +36,7 @@ export default function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full overflow-y-auto">
-        <ClerkProvider
-          appearance={clerkAppearance}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/account"
-          signUpFallbackRedirectUrl="/account"
-        >
+        <ClerkProvider appearance={clerkAppearance}>
           <RegistryProfileProvider>
             <RegistryUsernameGate />
             {children}

@@ -9,17 +9,16 @@ import {
   SiteHeaderAuthSkeleton,
   SiteHeaderAuthSkeletonSignedOut,
 } from "@/components/site-header-auth-skeleton";
-import { clerkAppearance } from "@/lib/clerk-appearance";
-import { clerkModalAuth } from "@/lib/clerk-modal-auth";
+import { clerkModalAppearance } from "@/lib/clerk-modal-auth";
 import {
   headerNavCtaButton,
   headerNavTextButton,
 } from "@/lib/header-nav-classes";
 
 const userButtonAppearance = {
-  ...clerkAppearance,
+  ...clerkModalAppearance,
   elements: {
-    ...clerkAppearance.elements,
+    ...clerkModalAppearance.elements,
     avatarBox: "h-9 w-9 ring-1 ring-cloud-canvas",
     userButtonTrigger: "rounded-full focus:shadow-none",
     userButtonPopoverCard: "shadow-[var(--shadow-feature)]",
@@ -40,8 +39,9 @@ export function SiteHeaderAuth() {
       <>
         <SignInButton
           mode="modal"
-          appearance={clerkModalAuth.appearance}
-          oauthFlow={clerkModalAuth.oauthFlow}
+          appearance={clerkModalAppearance}
+          forceRedirectUrl="/account"
+          fallbackRedirectUrl="/account"
         >
           <button type="button" className={headerNavTextButton}>
             Sign in
@@ -49,9 +49,9 @@ export function SiteHeaderAuth() {
         </SignInButton>
         <SignInButton
           mode="modal"
-          appearance={clerkModalAuth.appearance}
-          oauthFlow={clerkModalAuth.oauthFlow}
-          forceRedirectUrl={clerkModalAuth.forceRedirectUrl}
+          appearance={clerkModalAppearance}
+          forceRedirectUrl="/account"
+          fallbackRedirectUrl="/account"
         >
           <button type="button" className={headerNavCtaButton}>
             Publish
