@@ -5,6 +5,8 @@ const isPublicRoute = createRouteMatcher([
   "/studio(.*)",
   "/workflows/(.*)",
   "/account(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
   "/api/workflow-studio(.*)",
   "/api/workflows/publish(.*)",
 ]);

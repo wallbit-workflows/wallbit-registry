@@ -1,5 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { Suspense } from "react";
 import { AppToaster } from "@/components/app-toaster";
+import { ClerkOpenSignInFromQuery } from "@/components/clerk-open-sign-in-from-query";
 import { RegistryProfileProvider } from "@/components/registry-profile-provider";
 import { RegistryUsernameGate } from "@/components/registry-username-gate";
 import { clerkAppearance } from "@/lib/clerk-appearance";
@@ -36,8 +38,17 @@ export default function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full overflow-y-auto">
-        <ClerkProvider appearance={clerkAppearance}>
+        <ClerkProvider
+          appearance={clerkAppearance}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-in"
+          signInFallbackRedirectUrl="/account"
+          signUpFallbackRedirectUrl="/account"
+        >
           <RegistryProfileProvider>
+            <Suspense fallback={null}>
+              <ClerkOpenSignInFromQuery />
+            </Suspense>
             <RegistryUsernameGate />
             {children}
             <AppToaster />
