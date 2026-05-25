@@ -256,21 +256,39 @@ async function* streamViaCursorSdk(
 
 let sdkLoadFailed = false;
 
+/** Local @cursor/sdk needs a writable FS; Vercel/Lambda cannot mkdir sdk-agent-store. */
+function preferCursorCloudApi(): boolean {
+  if (
+    process.env.CURSOR_WORKFLOW_USE_API === "1" ||
+    process.env.CURSOR_WORKFLOW_USE_API === "true"
+  ) {
+    return true;
+  }
+  return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+}
+
+function shouldFallbackSdkToApi(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    message.includes("bindings file") ||
+    message.includes("sqlite3") ||
+    message.includes("sdk-agent-store") ||
+    message.includes("ENOENT")
+  );
+}
+
 /** Stream workflow YAML generation via @cursor/sdk, falling back to the Cloud Agents REST API. */
 export async function* streamWorkflowStudio(
   options: RunOptions,
 ): AsyncGenerator<StudioStreamEvent> {
-  const preferApi =
-    process.env.CURSOR_WORKFLOW_USE_API === "1" ||
-    process.env.CURSOR_WORKFLOW_USE_API === "true";
+  const useApi = preferCursorCloudApi();
 
-  if (!preferApi && !sdkLoadFailed) {
+  if (!useApi && !sdkLoadFailed) {
     try {
       yield* streamViaCursorSdk(options);
       return;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("bindings file") || message.includes("sqlite3")) {
+      if (shouldFallbackSdkToApi(err)) {
         sdkLoadFailed = true;
       } else {
         throw err;
