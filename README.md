@@ -119,6 +119,8 @@ Base URL: your Railway host or `http://localhost:8080`. No `/v1` prefix.
 
 - User must have a **registry username** set (`PATCH /me`) before publish succeeds.
 - YAML max size: **256 KiB**.
+- YAML must pass the same checks as [`wallbit workflow validate`](https://github.com/wallbit-workflows/wallbit-cli) (schema, supported `run` ids, step `with` inputs).
+- Publish `version` must be semver (e.g. `1.0.0`).
 - Duplicate semver for the same workflow → **409**.
 
 **Example (registry API key):**

@@ -24,6 +24,12 @@ func validatePublishRequest(req PublishRequest) error {
 	if len(req.Content) > MaxWorkflowContentBytes {
 		return fmt.Errorf("%w: content exceeds %d bytes", ErrInvalidInput, MaxWorkflowContentBytes)
 	}
+	if err := validatePublishVersion(req.Version); err != nil {
+		return fmt.Errorf("%w: %s", ErrInvalidInput, err.Error())
+	}
+	if err := validateWorkflowContent(req.Content); err != nil {
+		return fmt.Errorf("%w: %s", ErrInvalidInput, err.Error())
+	}
 	return nil
 }
 
