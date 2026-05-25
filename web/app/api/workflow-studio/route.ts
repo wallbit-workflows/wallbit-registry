@@ -8,7 +8,10 @@ import {
   buildPromptWithAttachments,
   type StudioAttachment,
 } from "@/lib/studio-attachments";
-import { buildStudioUserMessage } from "@/lib/wallbit-workflow-skill-prompt";
+import {
+  isOffTopicStudioRequest,
+  WALLBIT_WORKFLOW_REFUSAL_HINT,
+} from "@/lib/wallbit-workflow-skill-prompt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,7 +73,6 @@ export async function POST(request: Request) {
   }
 
   const withFiles = buildPromptWithAttachments(userPrompt, attachments);
-  const prompt = buildStudioUserMessage(withFiles, Boolean(body.agentId));
 
   const encoder = new TextEncoder();
 
@@ -80,10 +82,19 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(sseLine(event, data)));
       };
 
+      if (isOffTopicStudioRequest(withFiles)) {
+        push("text", { delta: WALLBIT_WORKFLOW_REFUSAL_HINT });
+        push("done", {
+          result: WALLBIT_WORKFLOW_REFUSAL_HINT,
+          runId: "refused",
+        });
+        return;
+      }
+
       try {
         for await (const item of streamWorkflowStudio({
           apiKey,
-          prompt,
+          prompt: withFiles,
           agentId: body.agentId,
         })) {
           if (item.type === "status") {
